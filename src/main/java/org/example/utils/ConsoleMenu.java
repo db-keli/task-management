@@ -7,9 +7,9 @@ public class ConsoleMenu {
    private boolean exit = false;
 
    private static final Scanner sc = new Scanner(System.in);
-   public ConsoleMenu() {
-       String main_menu = String.format(
-               """
+
+   private void displayMainMenu() {
+       String main_menu = """
                Main Menu:
                ___________
                1. Main Projects
@@ -17,8 +17,11 @@ public class ConsoleMenu {
                3. View Status Reports
                4. Switch User
                5. Exit
-               """
-       );
+               """;
+       System.out.println(main_menu);
+   }
+
+   public ConsoleMenu() {
 
 //       String projectCatalog = String.format(
 //               """
@@ -68,35 +71,56 @@ public class ConsoleMenu {
 //               """
 //       );
 
-       System.out.println(main_menu);
-
+       displayMainMenu();
        while (!exit) {
-           input = readInt();
-           setExit();
-           System.out.println(input);
-//           sc.close();
-
-           switch (input) {
-               case 1:
-                   System.out.println("Manage projects");
-               case 2:
-                   System.out.println("Manage tasks");
-               case 3:
-                   System.out.println("Manage Reports");
-               case 4:
-                   System.out.println("Manage user");
-               default:
-           }
+           input = readInt("Enter your choice: ");
+           processMainMenuChoice();
        }
+       System.out.println(input);
+       sc.close();
    }
 
-   private int readInt() {
-       System.out.print("Enter your choice: ");
+   private int readInt(String prompt) {
+       System.out.print(prompt);
        while (!sc.hasNextInt()) {
            System.out.println("Invalid input. try again: ");
            sc.next();
        }
+
        return sc.nextInt();
+   }
+
+   private void processMainMenuChoice() {
+       switch (input) {
+       case 1 -> {
+           System.out.println("→ Opening Main Projects...");
+           // TODO: open projects menu
+       }
+       case 2 -> {
+           System.out.println("→ Opening Task Management...");
+           // TODO: open tasks menu
+       }
+       case 3 -> {
+           System.out.println("→ Generating Status Reports...");
+           // TODO: show reports
+       }
+       case 4 -> {
+           System.out.println("→ Switching User...");
+           // TODO: logout/login
+       }
+       case 5 -> {
+           System.out.println("Exiting program...");
+           exit = true;
+       }
+       default -> {
+           System.out.println("Invalid choice! Please select 1–5.");
+       }
+       }
+
+       if (!exit) {
+           System.out.println();
+           displayMainMenu();
+       }
    }
 
     public static String nextLine() {
