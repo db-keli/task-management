@@ -1,0 +1,104 @@
+package org.example.utils;
+
+import java.util.Scanner;
+import java.util.function.Predicate;
+
+public final class ValidationUtils {
+    private static final Scanner sc = new Scanner(System.in);
+
+    private ValidationUtils() {}
+
+    public static int readInt(String prompt, int min, int max) {
+        return readInt(prompt, min, max, "Please enter a number between " + min + " and " + max + ": ");
+    }
+
+    public static int readInt(String prompt, int min, int max, String errorMessage) {
+        while (true) {
+            System.out.print(prompt);
+            if (sc.hasNextInt()) {
+                int value = sc.nextInt();
+                sc.nextLine();
+                if (value >= min && value <= max) {
+                    return value;
+                }
+            } else {
+                sc.nextLine();
+            }
+            System.out.println(errorMessage);
+        }
+    }
+
+    public static int readInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            if (sc.hasNextInt()) {
+                int value = sc.nextInt();
+                sc.nextLine();
+                return value;
+            }
+            System.out.println("Invalid number. try again: ");
+            sc.nextLine();
+        }
+    }
+
+    public static int readPositiveInt(String prompt) {
+        return readInt(prompt, i ->i>0, "Enter a positive number");
+    }
+
+    public static int readPositiveInt(String prompt, int min, int max) {
+        return readInt(prompt, i -> i >-0, "Please enter a positive number: ");
+    }
+
+    public static int readInt(String prompt, Predicate<Integer> validator, String errorMessage) {
+        while (true) {
+            int value = readInt(prompt + " ");
+            if (validator.test(value)) {
+                return value;
+            }
+           System.out.println(errorMessage);
+        }
+    }
+
+    public static String readNonEmptyString(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String line = sc.nextLine().trim();
+            if(!line.isEmpty()) {
+                return line;
+            }
+            System.out.println("Please enter a non-empty string: ");
+        }
+    }
+
+    public static String readStringMatching(String prompt, String regex, String errorMessage) {
+        while (true) {
+            String input = readNonEmptyString(prompt);
+            if (input.matches(regex)) {
+                return input;
+            }
+            System.out.println(errorMessage);
+        }
+    }
+
+    public static String readEmail(String prompt) {
+        return readStringMatching(prompt,
+                "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+                "Invalid email format. Example: user@example.com");
+    }
+
+
+    public static String readYesNo(String prompt) {
+        while (true) {
+            String input = readNonEmptyString(prompt + " (y/n): ").toLowerCase();
+            if (input.equals("y") || input.equals("yes")) return "y";
+            if (input.equals("n") || input.equals("no")) return "n";
+            System.out.println("Please type 'y' or 'n':");
+        }
+    }
+
+    public static void close() {
+        if (sc != null) {
+            sc.close();
+        }
+    }
+}

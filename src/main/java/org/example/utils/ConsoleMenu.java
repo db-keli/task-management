@@ -1,12 +1,12 @@
 package org.example.utils;
 
 import java.util.Scanner;
+import org.example.utils.ValidationUtils;
 
 public class ConsoleMenu {
    private int input;
    private boolean exit = false;
 
-   private static final Scanner sc = new Scanner(System.in);
 
    private void displayMainMenu() {
        String main_menu = """
@@ -73,24 +73,14 @@ public class ConsoleMenu {
 
        displayMainMenu();
        while (!exit) {
-           input = readInt("Enter your choice: ");
-           processMainMenuChoice();
+           int choice = ValidationUtils.readInt("Enter your choice: ", 1, 5);
+           processMainMenuChoice(choice);
        }
        System.out.println(input);
-       sc.close();
+       ValidationUtils.close();
    }
 
-   private int readInt(String prompt) {
-       System.out.print(prompt);
-       while (!sc.hasNextInt()) {
-           System.out.println("Invalid input. try again: ");
-           sc.next();
-       }
-
-       return sc.nextInt();
-   }
-
-   private void processMainMenuChoice() {
+   private void processMainMenuChoice(int input) {
        switch (input) {
        case 1 -> {
            System.out.println("→ Opening Main Projects...");
@@ -122,10 +112,6 @@ public class ConsoleMenu {
            displayMainMenu();
        }
    }
-
-    public static String nextLine() {
-        return sc.nextLine();
-    }
 
     private void setExit() {
         if (input == 5){
