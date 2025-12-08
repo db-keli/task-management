@@ -1,6 +1,6 @@
 package org.example.models;
 
-abstract class Project {
+public abstract class Project {
     private String id;
     private String name;
     private String description;
