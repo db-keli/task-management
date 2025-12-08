@@ -1,5 +1,5 @@
 package org.example.models;
 
-public class SoftwareProject {
+public class SoftwareProject extends Project {
 
 }
