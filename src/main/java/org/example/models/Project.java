@@ -6,7 +6,7 @@ public abstract class Project {
     private String description;
     private double budget;
     private int teamSize;
-    private Task[] tasks = new Task[50];
+    private Task[] tasks = new Task[100];
     private int taskCount=0;
 
     public Project(String name, String description, double budget, int teamSize) {
