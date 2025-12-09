@@ -19,6 +19,11 @@ public abstract class Project {
     public String getId() {
         return id;
     }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getName() {
         return name;
     }
@@ -64,6 +69,27 @@ public abstract class Project {
         } else {
             System.err.println("Task limit reached");
         }
+    }
+
+    public Task[] getTasks() {
+        Task[] activeTasks = new Task[taskCount];
+        System.arraycopy(tasks, 0, activeTasks, 0, taskCount);
+        return activeTasks;
+    }
+
+    public boolean removeTask(String taskId) {
+        for (int i = 0; i < taskCount; i++) {
+            if (tasks[i].getId().equals(taskId)) {
+                // Shift remaining tasks to fill the gap
+                for (int j = i; j < taskCount - 1; j++) {
+                    tasks[j] = tasks[j + 1];
+                }
+                tasks[taskCount - 1] = null;
+                taskCount--;
+                return true;
+            }
+        }
+        return false;
     }
 
     public double getCompletionPercentage() {

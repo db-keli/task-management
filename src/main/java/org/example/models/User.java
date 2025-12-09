@@ -6,16 +6,19 @@ public abstract class User {
     private String id;
     public String name;
     public String email;
-    public UserRoles role;
 
-    public User(String name, String email, UserRoles role) {
+    public User(String name, String email) {
         this.name = name;
         this.email = email;
-        this.role = role;
     }
     public String getId() {
         return id;
     }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getName() {
         return name;
     }
@@ -27,12 +30,6 @@ public abstract class User {
     }
     public void setEmail(String email) {
         this.email = email;
-    }
-    public UserRoles getRole() {
-        return role;
-    }
-    public void setRole(UserRoles role) {
-        this.role = role;
     }
 
     public abstract boolean canManageUsers();

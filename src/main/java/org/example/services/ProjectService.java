@@ -1,18 +1,28 @@
 package org.example.services;
 
+import org.example.enums.ModelType;
 import org.example.models.Project;
+import org.example.utils.IdCounterManager;
 
 public class ProjectService {
     private Project[] projects = new Project[100];
     private int projectCount = 0;
-    private static int idCounter = 1;
+    private final IdCounterManager idManager;
+
+    public ProjectService() {
+        this.idManager = IdCounterManager.getInstance();
+    }
 
     public String getNextProjectId() {
-        return "P" + String.format("%03d", idCounter++);
+        return idManager.getNextId(ModelType.PROJECT);
     }
 
     public void addProject(Project project) {
         if (projectCount < projects.length) {
+            // Assign ID if not already set
+            if (project.getId() == null || project.getId().isEmpty()) {
+                project.setId(getNextProjectId());
+            }
             projects[projectCount++] = project;
         } else {
             System.out.println("Maximum projects reached.");

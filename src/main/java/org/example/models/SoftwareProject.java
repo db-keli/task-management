@@ -6,6 +6,6 @@ public class SoftwareProject extends Project {
     }
     @Override
     public String getType() {
-        return "SoftwareProject";
+        return "Software";
     }
 }

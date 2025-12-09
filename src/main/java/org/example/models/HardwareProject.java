@@ -7,6 +7,6 @@ public class HardwareProject extends Project {
 
     @Override
     public String getType() {
-        return "HardwareProject";
+        return "Hardware";
     }
 }
