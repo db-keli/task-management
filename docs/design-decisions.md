@@ -17,7 +17,7 @@ ID management was scattered across services:
 
 ### Solution
 
-I consolidated all ID generation into a single component.
+I added all ID generation into a single component.
 
 ### Design Decisions
 
@@ -42,13 +42,13 @@ public static IdCounterManager getInstance() {
 
 #### 2. Thread-Safety
 
-I used `ConcurrentHashMap` and `AtomicInteger` for thread-safe operations without external synchronization.
+I used `ConcurrentHashMap` and `AtomicInteger` for thread-safe operations without external 
+synchronization since I'm using a single manager for all model types.
 
 ```java
 private final ConcurrentHashMap<ModelType, AtomicInteger> counters;
 int nextValue = counter.getAndIncrement();
 ```
-
 #### 3. Enum-Based Model Types
 
 I used a `ModelType` enum for type safety and easy extensibility.
