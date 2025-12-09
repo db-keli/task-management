@@ -1,7 +1,5 @@
 # task management system
 
-# Task Management System
-
 ## Setup and Run Instructions
 1. Install JDK 21 and IntelliJ IDEA.
 2. Clone the repository.
