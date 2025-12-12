@@ -1,12 +1,18 @@
 package org.example.utils;
 
+import org.example.exceptions.ValidationException;
+
+import java.util.InputMismatchException;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.function.Predicate;
 
 public final class ValidationUtils {
     private static final Scanner sc = new Scanner(System.in);
 
-    private ValidationUtils() {}
+    private ValidationUtils() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
     public static int readInt(String prompt, int min, int max) {
         return readInt(prompt, min, max, "Please enter a number between " + min + " and " + max + ": ");
@@ -15,29 +21,46 @@ public final class ValidationUtils {
     public static int readInt(String prompt, int min, int max, String errorMessage) {
         while (true) {
             System.out.print(prompt);
-            if (sc.hasNextInt()) {
-                int value = sc.nextInt();
-                sc.nextLine();
-                if (value >= min && value <= max) {
-                    return value;
-                }
-            } else {
-                sc.nextLine();
+            String input = sc.nextLine().trim();
+
+            if (input.isEmpty()) {
+                Logger.printCriticalErrorLogMessage("Input cannot be empty!");
+//                throw new ValidationException(errorMessage);
+                continue;
             }
-            System.out.println(errorMessage);
+
+            try {
+                int value = Integer.parseInt(input);
+                if (value >= min && value <= max) {
+                    Logger.printSuccessLogMessage("Valid input: " + value);
+                    return value;
+                } else {
+                    Logger.printWarningLogMessage(errorMessage);
+                }
+            } catch (NumberFormatException | NoSuchElementException e) {
+                Logger.printCriticalErrorLogMessage("Invalid number format: '" + input + "'");
+//                throw new InputMismatchException("Invalid number format: '" + input + "'");
+            }
         }
     }
 
     public static int readInt(String prompt) {
         while (true) {
             System.out.print(prompt);
-            if (sc.hasNextInt()) {
-                int value = sc.nextInt();
-                sc.nextLine();
-                return value;
+            String input = sc.nextLine().trim();
+
+            if (input.isEmpty()) {
+                Logger.printCriticalErrorLogMessage("Cannot be empty!");
+                continue;
             }
-            System.out.println("Invalid number. try again: ");
-            sc.nextLine();
+
+            try {
+                int value = Integer.parseInt(input);
+                Logger.printSuccessLogMessage("Accepted: " + value);
+                return value;
+            } catch (NumberFormatException e) {
+                Logger.printErrorLogMessage("Not a valid integer: '" + input + "'");
+            }
         }
     }
 
@@ -55,7 +78,7 @@ public final class ValidationUtils {
             if (validator.test(value)) {
                 return value;
             }
-           System.out.println(errorMessage);
+           Logger.printWarningLogMessage(errorMessage);
         }
     }
 
@@ -66,7 +89,7 @@ public final class ValidationUtils {
             if(!line.isEmpty()) {
                 return line;
             }
-            System.out.println("Please enter a non-empty string: ");
+            Logger.printWarningLogMessage("Please enter a non-empty string: ");
         }
     }
 
@@ -76,7 +99,7 @@ public final class ValidationUtils {
             if (input.matches(regex)) {
                 return input;
             }
-            System.out.println(errorMessage);
+            Logger.printErrorLogMessage(errorMessage);
         }
     }
 
