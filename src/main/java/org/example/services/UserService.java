@@ -48,23 +48,32 @@ public class UserService {
     }
 
     public User getUserByEmail(String email) {
+        if (email == null)
+            return null;
         for (int i = 0; i < userCount; i++) {
-            if (users[i].getEmail().equalsIgnoreCase(email)) {
+            if (users[i] != null && email.equalsIgnoreCase(users[i].getEmail())) {
                 return users[i];
             }
         }
         return null;
     }
 
-    public void addUser(User user) {
-        if (userCount < users.length) {
-            if (user.getId() == null || user.getId().isEmpty()) {
-                user.setId(idManager.getNextId(ModelType.USER));
-            }
-            users[userCount++] = user;
-        } else {
-            System.out.println("Maximum users reached.");
+    public boolean addUser(User user) {
+        if (user == null) {
+            return false;
         }
+        if (userCount >= users.length) {
+            return false;
+        }
+        // Check for duplicate email
+        if (user.getEmail() != null && getUserByEmail(user.getEmail()) != null) {
+            return false;
+        }
+        if (user.getId() == null || user.getId().isEmpty()) {
+            user.setId(idManager.getNextId(ModelType.USER));
+        }
+        users[userCount++] = user;
+        return true;
     }
 
     public boolean switchUser(String email) {
@@ -76,14 +85,41 @@ public class UserService {
         return false;
     }
 
-    public void displayUsers() {
-        System.out.println("\nAvailable Users:");
-        System.out.println("ID | Name | Email | Role");
-        System.out.println("------------------------");
-        for (int i = 0; i < userCount; i++) {
-            User u = users[i];
-            String role = u instanceof AdminUser ? "Admin" : "Regular";
-            System.out.println(u.getId() + " | " + u.getName() + " | " + u.getEmail() + " | " + role);
+    public boolean deleteUser(String email) {
+        if (email == null)
+            return false;
+        // Prevent deleting the current user
+        if (currentUser != null && email.equalsIgnoreCase(currentUser.getEmail())) {
+            return false;
         }
+        for (int i = 0; i < userCount; i++) {
+            if (users[i] != null && email.equalsIgnoreCase(users[i].getEmail())) {
+                // Shift remaining users to fill the gap
+                for (int j = i; j < userCount - 1; j++) {
+                    users[j] = users[j + 1];
+                }
+                users[userCount - 1] = null;
+                userCount--;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public User getUserById(String userId) {
+        if (userId == null)
+            return null;
+        for (int i = 0; i < userCount; i++) {
+            if (users[i] != null && userId.equals(users[i].getId())) {
+                return users[i];
+            }
+        }
+        return null;
+    }
+
+    public User createUser(String name, String email, boolean isAdmin) {
+        User user = isAdmin ? new AdminUser(name, email) : new RegularUser(name, email);
+        user.setId(idManager.getNextId(ModelType.USER));
+        return user;
     }
 }
