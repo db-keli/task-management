@@ -7,10 +7,11 @@ public class Task implements Completable {
     private String id;
     private String name;
     private Status status;
+    private String assignedUserId;
 
-    public Task(String name, String status) {
+    public Task(String name, Status status) {
         this.name = name;
-        this.status = Status.valueOf(status);
+        this.status = status;
     }
 
     public boolean isCompleted() {
@@ -39,5 +40,13 @@ public class Task implements Completable {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public String getAssignedUserId() {
+        return assignedUserId;
+    }
+
+    public void setAssignedUserId(String assignedUserId) {
+        this.assignedUserId = assignedUserId;
     }
 }

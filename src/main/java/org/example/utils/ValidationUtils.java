@@ -69,7 +69,7 @@ public final class ValidationUtils {
     }
 
     public static int readPositiveInt(String prompt, int min, int max) {
-        return readInt(prompt, i -> i >-0, "Please enter a positive number: ");
+        return readInt(prompt, min, max, "Please enter a number between " + min + " and " + max + ": ");
     }
 
     public static int readInt(String prompt, Predicate<Integer> validator, String errorMessage) {
@@ -109,6 +109,25 @@ public final class ValidationUtils {
                 "Invalid email format. Example: user@example.com");
     }
 
+    public static double readDouble(String prompt, double min, double max) {
+        return readDouble(prompt, min, max, "Please enter a number between " + min + " and " + max + ": ");
+    }
+
+    public static double readDouble(String prompt, double min, double max, String errorMessage) {
+        while (true) {
+            System.out.print(prompt);
+            if (sc.hasNextDouble()) {
+                double value = sc.nextDouble();
+                sc.nextLine();
+                if (value >= min && value <= max) {
+                    return value;
+                }
+            } else {
+                sc.nextLine();
+            }
+            System.out.println(errorMessage);
+        }
+    }
 
     public static String readYesNo(String prompt) {
         while (true) {
