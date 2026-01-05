@@ -13,10 +13,14 @@ public class TaskService {
     }
 
     public Task createTask(String name, Status status) {
-        String id = idManager.getNextId(ModelType.TASK);
-        Task task = new Task(name, status);
-        task.setId(id);
-        return task;
+        try {
+            String id = idManager.getNextId(ModelType.TASK);
+            Task task = new Task(name, status);
+            task.setId(id);
+            return task;
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Failed to generate task ID: " + e.getMessage(), e);
+        }
     }
 
     public Task createTaskFromStatusString(String name, String statusString) {
@@ -42,7 +46,7 @@ public class TaskService {
             return false;
         }
         task.setStatus(status);
-        return true;
+            return true;
     }
 
     public boolean updateTaskStatusFromString(Task task, String statusString) {

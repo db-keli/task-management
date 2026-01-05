@@ -8,10 +8,10 @@ public abstract class Project {
     private int teamSize;
 
     public Project(String name, String description, double budget, int teamSize) {
-        this.name = name;
-        this.description = description;
-        this.budget = budget;
-        this.teamSize = teamSize;
+       this.name = name;
+       this.description = description;
+       this.budget = budget;
+       this.teamSize = teamSize;
     }
 
     public String getId() {

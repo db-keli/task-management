@@ -1,5 +1,6 @@
 package org.example.utils;
 
+import org.example.exceptions.InvalidProjectDataException;
 import org.example.models.AdminUser;
 import org.example.models.Project;
 import org.example.models.Task;
@@ -36,6 +37,14 @@ public class ConsoleMenu {
 
     private void displayWelcomeMessage() {
         User currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            System.out.println("\n========================================");
+            System.out.println("   TASK MANAGEMENT SYSTEM");
+            System.out.println("========================================");
+            System.out.println("Error: No current user set. Please restart the application.");
+            System.out.println("========================================\n");
+            return;
+        }
         System.out.println("\n========================================");
         System.out.println("   TASK MANAGEMENT SYSTEM");
         System.out.println("========================================");
@@ -50,7 +59,7 @@ public class ConsoleMenu {
         String mainMenu = """
                 Main Menu:
                 ___________
-                1. Main Projects
+                1. Manage Projects
                 2. Manage Tasks
                 3. View Status Reports
                 4. User Management
@@ -147,11 +156,17 @@ public class ConsoleMenu {
                 continue;
             }
 
-            Project project = projectService.getProjectById(projectId);
-            if (project != null) {
+            try {
+                Project project = projectService.getProjectById(projectId);
+                if (project == null) {
+                    throw new org.example.exceptions.ProjectNotFoundException(
+                            "Project ID '" + projectId + "' does not exist");
+                }
                 displayProjectDetails(project);
-            } else {
-                System.out.println("Project not found with ID: " + projectId);
+            } catch (org.example.exceptions.ProjectNotFoundException e) {
+                System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                        + "' does not exist");
+                System.out.println("Please try again");
             }
             System.out.println();
         }
@@ -167,6 +182,9 @@ public class ConsoleMenu {
                 "─────────────────────────────────────────────────────────────────────────");
 
         for (Project p : projects) {
+            if (p == null) {
+                continue; // Skip null projects
+            }
             System.out.printf("%-12s | %-20s | %-12s | $%-9.2f | %-10d%n", p.getId(), p.getName(),
                     p.getType(), p.getBudget(), p.getTeamSize());
         }
@@ -175,6 +193,10 @@ public class ConsoleMenu {
     }
 
     private void displayProjectDetails(Project project) {
+        if (project == null) {
+            System.out.println("\n✗ Error: Project details cannot be displayed - project is null.");
+            return;
+        }
         System.out.println("\n" + "=".repeat(60));
         System.out.println("PROJECT DETAILS: " + project.getId());
         System.out.println("=".repeat(60));
@@ -194,6 +216,9 @@ public class ConsoleMenu {
                     "ASSIGNED USER");
             System.out.println("─────────────────────────────────────────────────────────────");
             for (Task task : tasks) {
+                if (task == null) {
+                    continue; // Skip null tasks
+                }
                 String assignedUser = "Unassigned";
                 if (task.getAssignedUserId() != null) {
                     User assignedUserObj = userService.getUserById(task.getAssignedUserId());
@@ -238,20 +263,19 @@ public class ConsoleMenu {
         int typeChoice = ValidationUtils.readInt("Enter choice: ", 1, 2);
 
         String type = (typeChoice == 1) ? "Software" : "Hardware";
-        Project project = projectService.createProject(type, name, description, budget, teamSize);
-
-        if (projectService.addProject(project)) {
+        try {
+            Project project =
+                    projectService.createProject(type, name, description, budget, teamSize);
+            projectService.addProject(project);
             System.out.println("\n✓ Project created successfully! ID: " + project.getId() + "\n");
-        } else {
-            System.out.println("\n✗ Failed to create project. Maximum projects reached.\n");
+        } catch (InvalidProjectDataException e) {
+            System.out.println("\n✗ Failed to create project: " + e.getMessage() + "\n");
         }
     }
 
     private void handleTasksMenu() {
         System.out.println("\n→ Opening Task Management...\n");
         boolean backToMain = false;
-        User currentUser = userService.getCurrentUser();
-        boolean isAdmin = currentUser instanceof AdminUser;
 
         while (!backToMain) {
             Project[] projects = projectService.getAllProjects();
@@ -266,31 +290,16 @@ public class ConsoleMenu {
             System.out.println("Options:");
             System.out.println("1. Add New Task");
             System.out.println("2. Update Task Status");
-            if (isAdmin) {
-                System.out.println("3. Remove Task");
-                System.out.println("4. Back to Main Menu\n");
-            } else {
-                System.out.println("3. Back to Main Menu\n");
-            }
+            System.out.println("3. Remove Task");
+            System.out.println("4. Back to Main Menu\n");
 
-            int maxChoice = isAdmin ? 4 : 3;
-            int choice = ValidationUtils.readInt("Enter your choice: ", 1, maxChoice);
+            int choice = ValidationUtils.readInt("Enter your choice: ", 1, 4);
 
             switch (choice) {
                 case 1 -> addNewTask(projects);
                 case 2 -> updateTaskStatus(projects);
-                case 3 -> {
-                    if (isAdmin) {
-                        removeTask(projects);
-                    } else {
-                        backToMain = true;
-                    }
-                }
-                case 4 -> {
-                    if (isAdmin) {
-                        backToMain = true;
-                    }
-                }
+                case 3 -> removeTask(projects);
+                case 4 -> backToMain = true;
             }
 
             if (!backToMain) {
@@ -305,28 +314,34 @@ public class ConsoleMenu {
 
         displayProjectsTable(projects, "Available Projects");
         String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
-        Project project = projectService.getProjectById(projectId);
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
+            }
 
-        if (project == null) {
-            System.out.println("Project not found!");
-            return;
-        }
+            String taskName = ValidationUtils.readNonEmptyString("Task Name: ");
 
-        String taskName = ValidationUtils.readNonEmptyString("Task Name: ");
+            System.out.println("Task Status:");
+            System.out.println("1. NOTSTARTED");
+            System.out.println("2. INPROGRESS");
+            System.out.println("3. DONE");
+            int statusChoice = ValidationUtils.readInt("Enter status: ", 1, 3);
 
-        System.out.println("Task Status:");
-        System.out.println("1. NOTSTARTED");
-        System.out.println("2. INPROGRESS");
-        System.out.println("3. DONE");
-        int statusChoice = ValidationUtils.readInt("Enter status: ", 1, 3);
+            org.example.enums.Status status = taskService.mapStatusFromChoice(statusChoice);
+            Task task = taskService.createTask(taskName, status);
 
-        org.example.enums.Status status = taskService.mapStatusFromChoice(statusChoice);
-        Task task = taskService.createTask(taskName, status);
-
-        if (projectService.addTaskToProject(projectId, task)) {
-            System.out.println("\n✓ Task added successfully! ID: " + task.getId());
-        } else {
-            System.out.println("\n✗ Failed to add task.");
+            if (projectService.addTaskToProject(projectId, task)) {
+                System.out.println("\n✓ Task added successfully! ID: " + task.getId());
+            } else {
+                System.out.println(
+                        "\n✗ Failed to add task. Project may not exist or task is invalid.");
+            }
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
         }
     }
 
@@ -336,122 +351,140 @@ public class ConsoleMenu {
 
         displayProjectsTable(projects, "Available Projects");
         String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
-        Project project = projectService.getProjectById(projectId);
-
-        if (project == null) {
-            System.out.println("Project not found!");
-            return;
-        }
-
-        Task[] tasks = projectService.getTasksForProject(projectId);
-        if (tasks.length == 0) {
-            System.out.println("No tasks found in this project!");
-            return;
-        }
-
-        System.out.println("\nTasks in Project:");
-        System.out.println("─────────────────────────────────────────────");
-        System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
-        System.out.println("─────────────────────────────────────────────");
-        for (Task task : tasks) {
-            System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
-                    task.getStatus());
-        }
-        System.out.println("─────────────────────────────────────────────");
-
-        String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID to update: ");
-        Task taskToUpdate = null;
-        for (Task task : tasks) {
-            if (task.getId() != null && task.getId().equals(taskId)) {
-                taskToUpdate = task;
-                break;
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
             }
-        }
 
-        if (taskToUpdate == null) {
-            System.out.println("Task not found!");
-            return;
-        }
+            Task[] tasks = projectService.getTasksForProject(projectId);
+            if (tasks.length == 0) {
+                System.out.println("No tasks found in this project!");
+                return;
+            }
 
-        System.out.println("\nNew Status:");
-        System.out.println("1. NOTSTARTED");
-        System.out.println("2. INPROGRESS");
-        System.out.println("3. DONE");
-        int statusChoice = ValidationUtils.readInt("Enter status: ", 1, 3);
+            System.out.println("\nTasks in Project:");
+            System.out.println("─────────────────────────────────────────────");
+            System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
+            System.out.println("─────────────────────────────────────────────");
+            for (Task task : tasks) {
+                if (task == null) {
+                    continue; // Skip null tasks
+                }
+                System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
+                        task.getStatus());
+            }
+            System.out.println("─────────────────────────────────────────────");
 
-        org.example.enums.Status newStatus = taskService.mapStatusFromChoice(statusChoice);
+            String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID to update: ");
+            Task taskToUpdate = null;
+            for (Task task : tasks) {
+                if (task.getId() != null && task.getId().equals(taskId)) {
+                    taskToUpdate = task;
+                    break;
+                }
+            }
 
-        if (taskService.updateTaskStatus(taskToUpdate, newStatus)) {
-            System.out.println("\n✓ Task status updated successfully!");
-        } else {
-            System.out.println("\n✗ Failed to update task status!");
+            if (taskToUpdate == null) {
+                System.out.println("Task not found!");
+                return;
+            }
+
+            System.out.println("\nNew Status:");
+            System.out.println("1. NOTSTARTED");
+            System.out.println("2. INPROGRESS");
+            System.out.println("3. DONE");
+            int statusChoice = ValidationUtils.readInt("Enter status: ", 1, 3);
+
+            org.example.enums.Status newStatus = taskService.mapStatusFromChoice(statusChoice);
+
+            if (taskService.updateTaskStatus(taskToUpdate, newStatus)) {
+                System.out.println("\n✓ Task status updated successfully!");
+            } else {
+                System.out.println(
+                        "\n✗ Failed to update task status. Task or status may be invalid.");
+            }
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
         }
     }
 
     private void removeTask(Project[] projects) {
-        User currentUser = userService.getCurrentUser();
-        if (!(currentUser instanceof AdminUser)) {
-            System.out.println("\n✗ Access denied. Only administrators can remove tasks.");
-            return;
-        }
-
         System.out.println("\nRemove Task");
         System.out.println("───────────");
 
         displayProjectsTable(projects, "Available Projects");
         String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
-        Project project = projectService.getProjectById(projectId);
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
+            }
 
-        if (project == null) {
-            System.out.println("Project not found!");
-            return;
-        }
+            Task[] tasks = projectService.getTasksForProject(projectId);
+            if (tasks.length == 0) {
+                System.out.println("No tasks found in this project!");
+                return;
+            }
 
-        Task[] tasks = projectService.getTasksForProject(projectId);
-        if (tasks.length == 0) {
-            System.out.println("No tasks found in this project!");
-            return;
-        }
+            System.out.println("\nTasks in Project:");
+            System.out.println("─────────────────────────────────────────────");
+            System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
+            System.out.println("─────────────────────────────────────────────");
+            for (Task task : tasks) {
+                if (task == null) {
+                    continue; // Skip null tasks
+                }
+                System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
+                        task.getStatus());
+            }
+            System.out.println("─────────────────────────────────────────────");
 
-        System.out.println("\nTasks in Project:");
-        System.out.println("─────────────────────────────────────────────");
-        System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
-        System.out.println("─────────────────────────────────────────────");
-        for (Task task : tasks) {
-            System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
-                    task.getStatus());
-        }
-        System.out.println("─────────────────────────────────────────────");
+            String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID to remove: ");
 
-        String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID to remove: ");
-
-        if (projectService.removeTaskFromProject(projectId, taskId)) {
-            System.out.println("\n✓ Task removed successfully!");
-        } else {
-            System.out.println("\n✗ Task not found with ID: " + taskId);
+            try {
+                projectService.removeTaskFromProject(projectId, taskId);
+                System.out.println("\n✓ Task removed successfully!");
+            } catch (org.example.exceptions.TaskNotFoundException e) {
+                System.out.println("Error TaskNotFoundException - Task \"" + taskId
+                        + "\" was not found in the project");
+            }
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
         }
     }
 
     private void handleStatusReports() {
         System.out.println("\n→ Generating Status Reports...\n");
 
-        StatusReportData[] reportData = reportService.generateStatusReport();
-        if (reportData.length == 0) {
-            System.out.println("No projects available.");
-            System.out.println();
-            return;
-        }
+        try {
+            StatusReportData[] reportData = reportService.generateStatusReport();
+            if (reportData.length == 0) {
+                System.out.println("No projects available.");
+                System.out.println();
+                return;
+            }
 
-        System.out.println("PROJECT STATUS REPORT");
-        System.out.println("PROJECT ID | PROJECT NAME | TASKS | COMPLETED | PROGRESS (%)");
-        for (StatusReportData data : reportData) {
-            System.out.println(data.projectId() + " | " + data.projectName() + " | "
-                    + data.totalTasks() + " | " + data.completedTasks() + " | "
-                    + (data.completionPercentage() * 100) + "%");
+            System.out.println("PROJECT STATUS REPORT");
+            System.out.println("PROJECT ID | PROJECT NAME | TASKS | COMPLETED | PROGRESS (%)");
+            for (StatusReportData data : reportData) {
+                System.out.println(data.projectId() + " | " + data.projectName() + " | "
+                        + data.totalTasks() + " | " + data.completedTasks() + " | "
+                        + (data.completionPercentage() * 100) + "%");
+            }
+            double average = reportService.calculateAverageCompletion(reportData);
+            System.out.println("AVERAGE COMPLETION: " + Math.round(average * 100.0) / 100.0 + "%");
+            System.out.println();
+        } catch (org.example.exceptions.EmptyProjectException e) {
+            System.out.println("\n✗ " + e.getMessage());
+            System.out.println("Please add tasks to projects before generating status reports.\n");
         }
-        double average = reportService.calculateAverageCompletion(reportData);
-        System.out.println("AVERAGE COMPLETION: " + Math.round(average * 100.0) / 100.0 + "%");
-        System.out.println();
     }
 
     private void handleUserManagement() {
@@ -537,21 +570,45 @@ public class ConsoleMenu {
         System.out.println("───────────────");
 
         String name = ValidationUtils.readNonEmptyString("User Name: ");
-        String email = ValidationUtils.readEmail("Email: ");
 
-        System.out.println("User Role:");
-        System.out.println("1. Admin");
-        System.out.println("2. Regular User");
-        int roleChoice = ValidationUtils.readInt("Enter role: ", 1, 2);
+        String email = null;
+        boolean validEmail = false;
+        while (!validEmail) {
+            try {
+                email = ValidationUtils.readNonEmptyString("Email: ");
+                userService.validateEmail(email);
+                validEmail = true;
+            } catch (org.example.exceptions.InvalidEmailException e) {
+                System.out.println("\n✗ " + e.getMessage() + " Please try again.\n");
+            }
+        }
 
-        boolean isAdmin = roleChoice == 1;
-        User newUser = userService.createUser(name, email, isAdmin);
+        boolean isAdmin = false;
+        boolean validRole = false;
+        while (!validRole) {
+            System.out.println("User Role:");
+            System.out.println("1. Admin");
+            System.out.println("2. Regular User");
+            int roleChoice = ValidationUtils.readInt("Enter role: ", 1, 2);
 
-        if (userService.addUser(newUser)) {
+            try {
+                String roleString = (roleChoice == 1) ? "admin" : "regular";
+                isAdmin = userService.validateRole(roleString);
+                validRole = true;
+            } catch (org.example.exceptions.InvalidRoleException e) {
+                System.out.println("\n✗ " + e.getMessage() + " Please try again.\n");
+            }
+        }
+
+        try {
+            User newUser = userService.createUser(name, email, isAdmin);
+            userService.addUser(newUser);
             System.out.println("\n✓ User created successfully! ID: " + newUser.getId());
-        } else {
-            System.out.println(
-                    "\n✗ Failed to create user. User may already exist or maximum users reached.");
+        } catch (org.example.exceptions.InvalidEmailException e) {
+            System.out.println("\n✗ Failed to create user: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("\n✗ Failed to create user: " + e.getClass().getSimpleName() + " - "
+                    + e.getMessage());
         }
     }
 
@@ -566,7 +623,18 @@ public class ConsoleMenu {
         System.out.println("───────────");
 
         displayUsers();
-        String email = ValidationUtils.readEmail("\nEnter user email to delete: ");
+
+        String email = null;
+        boolean validEmail = false;
+        while (!validEmail) {
+            try {
+                email = ValidationUtils.readNonEmptyString("\nEnter user email to delete: ");
+                userService.validateEmail(email);
+                validEmail = true;
+            } catch (org.example.exceptions.InvalidEmailException e) {
+                System.out.println("\n✗ " + e.getMessage() + " Please try again.");
+            }
+        }
 
         if (userService.deleteUser(email)) {
             System.out.println("\n✓ User deleted successfully!");
@@ -588,26 +656,43 @@ public class ConsoleMenu {
 
         displayProjectsTable(projects, "Available Projects");
         String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
-        Project project = projectService.getProjectById(projectId);
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
+            }
 
-        if (project == null) {
-            System.out.println("Project not found!");
-            return;
-        }
+            displayUsers();
 
-        displayUsers();
-        String userEmail = ValidationUtils.readEmail("\nEnter user email to assign: ");
-        User user = userService.getUserByEmail(userEmail);
+            String userEmail = null;
+            boolean validEmail = false;
+            while (!validEmail) {
+                try {
+                    userEmail =
+                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userService.validateEmail(userEmail);
+                    validEmail = true;
+                } catch (org.example.exceptions.InvalidEmailException e) {
+                    System.out.println("\n✗ " + e.getMessage() + " Please try again.");
+                }
+            }
 
-        if (user == null) {
-            System.out.println("User not found!");
-            return;
-        }
+            User user = userService.getUserByEmail(userEmail);
+            if (user == null) {
+                System.out.println("User not found!");
+                return;
+            }
 
-        if (projectService.assignUserToProject(projectId, user.getId())) {
-            System.out.println("\n✓ User assigned to project successfully!");
-        } else {
-            System.out.println("\n✗ User is already assigned to this project.");
+            if (projectService.assignUserToProject(projectId, user.getId())) {
+                System.out.println("\n✓ User assigned to project successfully!");
+            } else {
+                System.out.println("\n✗ User is already assigned to this project.");
+            }
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
         }
     }
 
@@ -623,63 +708,93 @@ public class ConsoleMenu {
 
         displayProjectsTable(projects, "Available Projects");
         String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
-        Project project = projectService.getProjectById(projectId);
-
-        if (project == null) {
-            System.out.println("Project not found!");
-            return;
-        }
-
-        Task[] tasks = projectService.getTasksForProject(projectId);
-        if (tasks.length == 0) {
-            System.out.println("No tasks found in this project!");
-            return;
-        }
-
-        System.out.println("\nTasks in Project:");
-        System.out.println("─────────────────────────────────────────────");
-        System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
-        System.out.println("─────────────────────────────────────────────");
-        for (Task task : tasks) {
-            System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
-                    task.getStatus());
-        }
-        System.out.println("─────────────────────────────────────────────");
-
-        String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID: ");
-        Task taskToAssign = null;
-        for (Task task : tasks) {
-            if (task.getId() != null && task.getId().equals(taskId)) {
-                taskToAssign = task;
-                break;
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
             }
+
+            Task[] tasks = projectService.getTasksForProject(projectId);
+            if (tasks.length == 0) {
+                System.out.println("No tasks found in this project!");
+                return;
+            }
+
+            System.out.println("\nTasks in Project:");
+            System.out.println("─────────────────────────────────────────────");
+            System.out.printf("%-12s | %-20s | %-15s%n", "TASK ID", "TASK NAME", "STATUS");
+            System.out.println("─────────────────────────────────────────────");
+            for (Task task : tasks) {
+                if (task == null) {
+                    continue; // Skip null tasks
+                }
+                System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
+                        task.getStatus());
+            }
+            System.out.println("─────────────────────────────────────────────");
+
+            String taskId = ValidationUtils.readNonEmptyString("\nEnter Task ID: ");
+            Task taskToAssign = null;
+            for (Task task : tasks) {
+                if (task.getId() != null && task.getId().equals(taskId)) {
+                    taskToAssign = task;
+                    break;
+                }
+            }
+
+            if (taskToAssign == null) {
+                System.out.println("Task not found!");
+                return;
+            }
+
+            displayUsers();
+
+            String userEmail = null;
+            boolean validEmail = false;
+            while (!validEmail) {
+                try {
+                    userEmail =
+                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userService.validateEmail(userEmail);
+                    validEmail = true;
+                } catch (org.example.exceptions.InvalidEmailException e) {
+                    System.out.println("\n✗ " + e.getMessage() + " Please try again.");
+                }
+            }
+
+            User user = userService.getUserByEmail(userEmail);
+            if (user == null) {
+                System.out.println("User not found!");
+                return;
+            }
+
+            taskToAssign.setAssignedUserId(user.getId());
+            System.out.println("\n✓ User assigned to task successfully!");
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
         }
-
-        if (taskToAssign == null) {
-            System.out.println("Task not found!");
-            return;
-        }
-
-        displayUsers();
-        String userEmail = ValidationUtils.readEmail("\nEnter user email to assign: ");
-        User user = userService.getUserByEmail(userEmail);
-
-        if (user == null) {
-            System.out.println("User not found!");
-            return;
-        }
-
-        taskToAssign.setAssignedUserId(user.getId());
-        System.out.println("\n✓ User assigned to task successfully!");
     }
 
     private void handleSwitchUser() {
         System.out.println("\n→ Switching User...\n");
         displayUsers();
 
-        String email = ValidationUtils.readEmail("\nEnter user email to switch to: ");
+        String email = null;
+        boolean validEmail = false;
+        while (!validEmail) {
+            try {
+                email = ValidationUtils.readNonEmptyString("\nEnter user email to switch to: ");
+                userService.validateEmail(email);
+                validEmail = true;
+            } catch (org.example.exceptions.InvalidEmailException e) {
+                System.out.println("\n✗ " + e.getMessage() + " Please try again.");
+            }
+        }
 
-        if (userService.switchUser(email)) {
+        if (email != null && userService.switchUser(email)) {
             User newUser = userService.getCurrentUser();
             if (newUser != null) {
                 System.out.println(
@@ -687,7 +802,7 @@ public class ConsoleMenu {
                 System.out.println(
                         "Role: " + (newUser instanceof AdminUser ? "Admin" : "Regular User"));
             }
-        } else {
+        } else if (email != null) {
             System.out.println("\n✗ User not found with email: " + email);
         }
         System.out.println();
@@ -699,6 +814,9 @@ public class ConsoleMenu {
         System.out.println("ID | Name | Email | Role");
         System.out.println("------------------------");
         for (User u : users) {
+            if (u == null) {
+                continue; // Skip null users
+            }
             String role = u instanceof AdminUser ? "Admin" : "Regular";
             System.out
                     .println(u.getId() + " | " + u.getName() + " | " + u.getEmail() + " | " + role);

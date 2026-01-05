@@ -1,8 +1,5 @@
 package org.example.utils;
 
-import org.example.exceptions.ValidationException;
-
-import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.function.Predicate;

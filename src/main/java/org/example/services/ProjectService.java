@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.example.enums.ModelType;
+import org.example.exceptions.InvalidProjectDataException;
+import org.example.exceptions.ProjectNotFoundException;
+import org.example.exceptions.TaskNotFoundException;
 import org.example.models.HardwareProject;
 import org.example.models.Project;
 import org.example.models.SoftwareProject;
@@ -23,12 +26,20 @@ public class ProjectService {
         this.idManager = IdCounterManager.getInstance();
     }
 
-    public String getNextProjectId() {
-        return idManager.getNextId(ModelType.PROJECT);
+    public String getNextProjectId() throws InvalidProjectDataException {
+        try {
+            return idManager.getNextId(ModelType.PROJECT);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidProjectDataException("Failed to generate project ID: " + e.getMessage());
+        }
     }
 
     public Project createProject(String type, String name, String description, double budget,
-            int teamSize) {
+            int teamSize) throws InvalidProjectDataException {
+        if (budget <= 0) {
+            throw new InvalidProjectDataException("Budget must be positive. Provided: " + budget);
+        }
+        
         Project project;
         if ("Software".equalsIgnoreCase(type)) {
             project = new SoftwareProject(name, description, budget, teamSize);
@@ -39,30 +50,53 @@ public class ProjectService {
         return project;
     }
 
-    public boolean addProject(Project project) {
+    public boolean addProject(Project project) throws InvalidProjectDataException {
         if (project == null) {
-            return false;
+            throw new InvalidProjectDataException("Project cannot be null");
         }
         if (projectCount >= projects.length) {
-            return false;
+            throw new InvalidProjectDataException("Maximum projects limit reached");
         }
-        // Assign ID if not already set
+        
+        if (project.getBudget() <= 0) {
+            throw new InvalidProjectDataException("Budget must be positive. Provided: " + project.getBudget());
+        }
+        
         if (project.getId() == null || project.getId().isEmpty()) {
             project.setId(getNextProjectId());
+        } else {
+            if (projectExists(project.getId())) {
+                throw new InvalidProjectDataException("Project ID already exists: " + project.getId());
+            }
         }
+        
         projects[projectCount++] = project;
         return true;
     }
 
-    public Project getProjectById(String id) {
-        if (id == null)
-            return null;
+    public Project getProjectById(String id) throws ProjectNotFoundException {
+        if (id == null) {
+            throw new ProjectNotFoundException("Project ID cannot be null");
+        }
+
         for (int i = 0; i < projectCount; i++) {
             if (projects[i] != null && id.equals(projects[i].getId())) {
                 return projects[i];
             }
         }
-        return null;
+        throw new ProjectNotFoundException("Project ID '" + id + "' does not exist");
+    }
+
+    private boolean projectExists(String id) {
+        if (id == null) {
+            return false;
+        }
+        for (int i = 0; i < projectCount; i++) {
+            if (projects[i] != null && id.equals(projects[i].getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Project[] getAllProjects() {
@@ -127,11 +161,13 @@ public class ProjectService {
         return false;
     }
 
-    public boolean addTaskToProject(String projectId, Task task) {
+    public boolean addTaskToProject(String projectId, Task task) throws ProjectNotFoundException {
         if (projectId == null || task == null) {
             return false;
         }
-        if (getProjectById(projectId) == null) {
+        try {
+            getProjectById(projectId); // Verify project exists
+        } catch (ProjectNotFoundException e) {
             return false;
         }
         projectTasks.computeIfAbsent(projectId, k -> new ArrayList<>()).add(task);
@@ -149,15 +185,28 @@ public class ProjectService {
         return tasks.toArray(new Task[0]);
     }
 
-    public boolean removeTaskFromProject(String projectId, String taskId) {
+    public boolean removeTaskFromProject(String projectId, String taskId) throws TaskNotFoundException, ProjectNotFoundException {
         if (projectId == null || taskId == null) {
-            return false;
+            throw new TaskNotFoundException("Project ID and Task ID cannot be null");
         }
+        
+        try {
+            getProjectById(projectId); // Verify project exists
+        } catch (ProjectNotFoundException e) {
+            throw new TaskNotFoundException("Project not found with ID: " + projectId);
+        }
+        
         List<Task> tasks = projectTasks.get(projectId);
         if (tasks == null) {
-            return false;
+            throw new TaskNotFoundException("No tasks found for project: " + projectId);
         }
-        return tasks.removeIf(task -> task != null && taskId.equals(task.getId()));
+        
+        boolean removed = tasks.removeIf(task -> task != null && taskId.equals(task.getId()));
+        if (!removed) {
+            throw new TaskNotFoundException("Task not found with ID: " + taskId + " in project: " + projectId);
+        }
+        
+        return true;
     }
 
     public double getProjectCompletionPercentage(String projectId) {
@@ -174,11 +223,13 @@ public class ProjectService {
         return completed / (double) tasks.length;
     }
 
-    public boolean assignUserToProject(String projectId, String userId) {
+    public boolean assignUserToProject(String projectId, String userId) throws ProjectNotFoundException {
         if (projectId == null || userId == null) {
             return false;
         }
-        if (getProjectById(projectId) == null) {
+        try {
+            getProjectById(projectId);
+        } catch (ProjectNotFoundException e) {
             return false;
         }
         List<String> assignedUsers =

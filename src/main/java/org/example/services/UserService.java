@@ -1,6 +1,8 @@
 package org.example.services;
 
 import org.example.enums.ModelType;
+import org.example.exceptions.InvalidEmailException;
+import org.example.exceptions.InvalidRoleException;
 import org.example.models.AdminUser;
 import org.example.models.RegularUser;
 import org.example.models.User;
@@ -14,23 +16,23 @@ public class UserService {
 
     public UserService() {
         this.idManager = IdCounterManager.getInstance();
-        // Initialize with default users
         initializeDefaultUsers();
     }
 
     private void initializeDefaultUsers() {
-        // Create default admin user
-        AdminUser admin = new AdminUser("Admin", "admin@example.com");
-        admin.setId(idManager.getNextId(ModelType.USER));
-        users[userCount++] = admin;
+        try {
+            AdminUser admin = new AdminUser("Admin", "admin@example.com");
+            admin.setId(idManager.getNextId(ModelType.USER));
+            users[userCount++] = admin;
 
-        // Create default regular user
-        RegularUser regular = new RegularUser("Regular User", "user@example.com");
-        regular.setId(idManager.getNextId(ModelType.USER));
-        users[userCount++] = regular;
+            RegularUser regular = new RegularUser("Regular User", "user@example.com");
+            regular.setId(idManager.getNextId(ModelType.USER));
+            users[userCount++] = regular;
 
-        // Set admin as default current user
-        currentUser = admin;
+            currentUser = admin;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Warning: Failed to initialize default users: " + e.getMessage());
+        }
     }
 
     public User getCurrentUser() {
@@ -58,17 +60,22 @@ public class UserService {
         return null;
     }
 
-    public boolean addUser(User user) {
+    public boolean addUser(User user) throws InvalidEmailException {
         if (user == null) {
             return false;
         }
         if (userCount >= users.length) {
             return false;
         }
+        
+        // Validate email
+        validateEmail(user.getEmail());
+        
         // Check for duplicate email
-        if (user.getEmail() != null && getUserByEmail(user.getEmail()) != null) {
-            return false;
+        if (getUserByEmail(user.getEmail()) != null) {
+            throw new InvalidEmailException("Email already exists: " + user.getEmail());
         }
+        
         if (user.getId() == null || user.getId().isEmpty()) {
             user.setId(idManager.getNextId(ModelType.USER));
         }
@@ -117,9 +124,36 @@ public class UserService {
         return null;
     }
 
-    public User createUser(String name, String email, boolean isAdmin) {
+    public User createUser(String name, String email, boolean isAdmin) throws InvalidEmailException {
+        validateEmail(email);
+        
         User user = isAdmin ? new AdminUser(name, email) : new RegularUser(name, email);
         user.setId(idManager.getNextId(ModelType.USER));
         return user;
+    }
+
+    public void validateEmail(String email) throws InvalidEmailException {
+        if (email == null || email.trim().isEmpty()) {
+            throw new InvalidEmailException("Email cannot be null or empty");
+        }
+        
+        String emailPattern = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
+        if (!email.matches(emailPattern)) {
+            throw new InvalidEmailException("Invalid email format. Expected format: user@example.com");
+        }
+    }
+
+    public boolean validateRole(String role) throws InvalidRoleException {
+        if (role == null || role.trim().isEmpty()) {
+            throw new InvalidRoleException("Role cannot be null or empty");
+        }
+        
+        String normalizedRole = role.trim().toLowerCase();
+        if (!normalizedRole.equals("admin") && !normalizedRole.equals("regular") && 
+            !normalizedRole.equals("adminuser") && !normalizedRole.equals("regularuser")) {
+            throw new InvalidRoleException("Invalid role. Role must be 'admin' or 'regular'");
+        }
+        
+        return normalizedRole.equals("admin") || normalizedRole.equals("adminuser");
     }
 }
