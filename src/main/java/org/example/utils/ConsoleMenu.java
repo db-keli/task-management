@@ -19,10 +19,16 @@ public class ConsoleMenu {
     private final ReportService reportService;
 
     public ConsoleMenu() {
-        this.userService = new UserService();
-        this.projectService = new ProjectService();
-        this.taskService = new TaskService();
-        this.reportService = new ReportService(projectService);
+        this(new UserService(), new ProjectService(), new TaskService(), null);
+    }
+
+    public ConsoleMenu(UserService userService, ProjectService projectService,
+            TaskService taskService, ReportService reportService) {
+        this.userService = userService;
+        this.projectService = projectService;
+        this.taskService = taskService;
+        this.reportService =
+                (reportService != null) ? reportService : new ReportService(this.projectService);
 
         displayWelcomeMessage();
         displayMainMenu();
