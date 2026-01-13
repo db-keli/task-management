@@ -22,7 +22,7 @@ public final class ValidationUtils {
 
             if (input.isEmpty()) {
                 Logger.printCriticalErrorLogMessage("Input cannot be empty!");
-//                throw new ValidationException(errorMessage);
+
                 continue;
             }
 
@@ -36,7 +36,7 @@ public final class ValidationUtils {
                 }
             } catch (NumberFormatException | NoSuchElementException e) {
                 Logger.printCriticalErrorLogMessage("Invalid number format: '" + input + "'");
-//                throw new InputMismatchException("Invalid number format: '" + input + "'");
+
             }
         }
     }

@@ -1,9 +1,9 @@
 package org.example.utils;
 
-import org.example.enums.ModelType;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.example.enums.ModelType;
 
 public final class IdCounterManager {
     private static volatile IdCounterManager instance;
@@ -31,12 +31,12 @@ public final class IdCounterManager {
         if (modelType == null) {
             throw new IllegalArgumentException("ModelType cannot be null");
         }
-        
+
         AtomicInteger counter = counters.get(modelType);
         if (counter == null) {
             throw new IllegalArgumentException("Unknown ModelType: " + modelType);
         }
-        
+
         int nextValue = counter.getAndIncrement();
         return String.format("%s%03d", modelType.getPrefix(), nextValue);
     }
@@ -45,12 +45,12 @@ public final class IdCounterManager {
         if (modelType == null) {
             throw new IllegalArgumentException("ModelType cannot be null");
         }
-        
+
         AtomicInteger counter = counters.get(modelType);
         if (counter == null) {
             throw new IllegalArgumentException("Unknown ModelType: " + modelType);
         }
-        
+
         return counter.getAndIncrement();
     }
 
@@ -58,7 +58,7 @@ public final class IdCounterManager {
         if (modelType == null) {
             throw new IllegalArgumentException("ModelType cannot be null");
         }
-        
+
         AtomicInteger counter = counters.get(modelType);
         if (counter != null) {
             counter.set(1);
@@ -78,12 +78,12 @@ public final class IdCounterManager {
         if (modelType == null) {
             throw new IllegalArgumentException("ModelType cannot be null");
         }
-        
+
         AtomicInteger counter = counters.get(modelType);
         if (counter == null) {
             throw new IllegalArgumentException("Unknown ModelType: " + modelType);
         }
-        
+
         return counter.get();
     }
 
@@ -94,14 +94,13 @@ public final class IdCounterManager {
         if (value < 0) {
             throw new IllegalArgumentException("Counter value cannot be negative");
         }
-        
+
         AtomicInteger counter = counters.get(modelType);
         if (counter != null) {
             counter.set(value);
         }
     }
 
-    // only used when testing
     public static void resetInstance() {
         synchronized (IdCounterManager.class) {
             instance = null;

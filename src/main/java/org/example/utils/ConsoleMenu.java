@@ -1,10 +1,13 @@
 package org.example.utils;
 
+import org.example.exceptions.FileNotAvailableException;
 import org.example.exceptions.InvalidProjectDataException;
 import org.example.models.AdminUser;
 import org.example.models.Project;
 import org.example.models.Task;
 import org.example.models.User;
+import org.example.services.ConcurrencyService;
+import org.example.services.DataPersistenceService;
 import org.example.services.ProjectService;
 import org.example.services.ReportService;
 import org.example.services.StatusReportData;
@@ -17,6 +20,8 @@ public class ConsoleMenu {
     private final ProjectService projectService;
     private final TaskService taskService;
     private final ReportService reportService;
+    private final DataPersistenceService dataPersistenceService;
+    private final ConcurrencyService concurrencyService;
 
     public ConsoleMenu() {
         this(new UserService(), new ProjectService(), new TaskService(), null);
@@ -27,8 +32,16 @@ public class ConsoleMenu {
         this.userService = userService;
         this.projectService = projectService;
         this.taskService = taskService;
-        this.reportService =
-                (reportService != null) ? reportService : new ReportService(this.projectService);
+        this.reportService = (reportService != null) ? reportService : new ReportService(this.projectService);
+        this.dataPersistenceService = new DataPersistenceService(this.projectService);
+        this.concurrencyService = new ConcurrencyService(this.projectService, this.taskService, this.userService);
+
+        try {
+            dataPersistenceService.loadProjectsData();
+        } catch (FileNotAvailableException e) {
+            System.err.println("Warning: Could not load data from file: " + e.getMessage());
+            System.out.println("Starting with empty data. You can add new projects.");
+        }
 
         displayWelcomeMessage();
         displayMainMenu();
@@ -36,6 +49,17 @@ public class ConsoleMenu {
         while (!exit) {
             int choice = ValidationUtils.readInt("Enter your choice: ", 1, 6);
             processMainMenuChoice(choice);
+        }
+
+        concurrencyService.shutdown();
+
+        try {
+            dataPersistenceService.saveProjectsData();
+        } catch (FileNotAvailableException e) {
+            System.err.println("CRITICAL ERROR: Failed to save data: " + e.getMessage());
+            System.err.println("Your data may not be persisted!");
+        } catch (Exception e) {
+            System.err.println("Unexpected error while saving: " + e.getMessage());
         }
 
         ValidationUtils.close();
@@ -189,7 +213,7 @@ public class ConsoleMenu {
 
         for (Project p : projects) {
             if (p == null) {
-                continue; // Skip null projects
+                continue;
             }
             System.out.printf("%-12s | %-20s | %-12s | $%-9.2f | %-10d%n", p.getId(), p.getName(),
                     p.getType(), p.getBudget(), p.getTeamSize());
@@ -223,7 +247,7 @@ public class ConsoleMenu {
             System.out.println("─────────────────────────────────────────────────────────────");
             for (Task task : tasks) {
                 if (task == null) {
-                    continue; // Skip null tasks
+                    continue;
                 }
                 String assignedUser = "Unassigned";
                 if (task.getAssignedUserId() != null) {
@@ -270,8 +294,7 @@ public class ConsoleMenu {
 
         String type = (typeChoice == 1) ? "Software" : "Hardware";
         try {
-            Project project =
-                    projectService.createProject(type, name, description, budget, teamSize);
+            Project project = projectService.createProject(type, name, description, budget, teamSize);
             projectService.addProject(project);
             System.out.println("\n✓ Project created successfully! ID: " + project.getId() + "\n");
         } catch (InvalidProjectDataException e) {
@@ -297,15 +320,17 @@ public class ConsoleMenu {
             System.out.println("1. Add New Task");
             System.out.println("2. Update Task Status");
             System.out.println("3. Remove Task");
-            System.out.println("4. Back to Main Menu\n");
+            System.out.println("4. Simulate Multi-User Concurrent Updates");
+            System.out.println("5. Back to Main Menu\n");
 
-            int choice = ValidationUtils.readInt("Enter your choice: ", 1, 4);
+            int choice = ValidationUtils.readInt("Enter your choice: ", 1, 5);
 
             switch (choice) {
                 case 1 -> addNewTask(projects);
                 case 2 -> updateTaskStatus(projects);
                 case 3 -> removeTask(projects);
-                case 4 -> backToMain = true;
+                case 4 -> simulateConcurrentUpdates(projects);
+                case 5 -> backToMain = true;
             }
 
             if (!backToMain) {
@@ -376,7 +401,7 @@ public class ConsoleMenu {
             System.out.println("─────────────────────────────────────────────");
             for (Task task : tasks) {
                 if (task == null) {
-                    continue; // Skip null tasks
+                    continue;
                 }
                 System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
                         task.getStatus());
@@ -418,6 +443,39 @@ public class ConsoleMenu {
         }
     }
 
+    private void simulateConcurrentUpdates(Project[] projects) {
+        System.out.println("\nSimulate Multi-User Concurrent Task Updates");
+        System.out.println("─────────────────────────────────────────────");
+
+        displayProjectsTable(projects, "Available Projects");
+        String projectId = ValidationUtils.readNonEmptyString("\nEnter Project ID: ");
+        try {
+            Project project = projectService.getProjectById(projectId);
+            if (project == null) {
+                throw new org.example.exceptions.ProjectNotFoundException(
+                        "Project ID '" + projectId + "' does not exist");
+            }
+
+            Task[] tasks = projectService.getTasksForProject(projectId);
+            if (tasks.length == 0) {
+                System.out.println("No tasks found in this project!");
+                return;
+            }
+
+            System.out.println("\nConcurrent Update Simulation Settings:");
+            int numThreads = ValidationUtils.readInt("Number of concurrent users (threads): ", 1, 20);
+            int updatesPerThread = ValidationUtils.readInt("Number of updates per user: ", 1, 50);
+
+            System.out.println("\nStarting concurrent simulation...");
+            concurrencyService.simulateMultiUserTaskUpdates(projectId, numThreads, updatesPerThread);
+
+        } catch (org.example.exceptions.ProjectNotFoundException e) {
+            System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
+                    + "' does not exist");
+            System.out.println("Please try again");
+        }
+    }
+
     private void removeTask(Project[] projects) {
         System.out.println("\nRemove Task");
         System.out.println("───────────");
@@ -443,7 +501,7 @@ public class ConsoleMenu {
             System.out.println("─────────────────────────────────────────────");
             for (Task task : tasks) {
                 if (task == null) {
-                    continue; // Skip null tasks
+                    continue;
                 }
                 System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
                         task.getStatus());
@@ -675,8 +733,7 @@ public class ConsoleMenu {
             boolean validEmail = false;
             while (!validEmail) {
                 try {
-                    userEmail =
-                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userEmail = ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
                     userService.validateEmail(userEmail);
                     validEmail = true;
                 } catch (org.example.exceptions.InvalidEmailException e) {
@@ -733,7 +790,7 @@ public class ConsoleMenu {
             System.out.println("─────────────────────────────────────────────");
             for (Task task : tasks) {
                 if (task == null) {
-                    continue; // Skip null tasks
+                    continue;
                 }
                 System.out.printf("%-12s | %-20s | %-15s%n", task.getId(), task.getName(),
                         task.getStatus());
@@ -760,8 +817,7 @@ public class ConsoleMenu {
             boolean validEmail = false;
             while (!validEmail) {
                 try {
-                    userEmail =
-                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userEmail = ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
                     userService.validateEmail(userEmail);
                     validEmail = true;
                 } catch (org.example.exceptions.InvalidEmailException e) {
@@ -821,7 +877,7 @@ public class ConsoleMenu {
         System.out.println("------------------------");
         for (User u : users) {
             if (u == null) {
-                continue; // Skip null users
+                continue;
             }
             String role = u instanceof AdminUser ? "Admin" : "Regular";
             System.out
