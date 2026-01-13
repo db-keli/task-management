@@ -18,7 +18,7 @@ class ProjectTest {
     @BeforeEach
     void setUp() throws Exception {
         projectService = new ProjectService();
-        
+
         Project project = projectService.createProject("Software", "Test Project", "Test Description", 1000.0, 5);
         projectService.addProject(project);
         projectId = project.getId();
@@ -38,7 +38,7 @@ class ProjectTest {
         TaskService taskService = new TaskService();
         Task task1 = taskService.createTask("Task 1", Status.NOTSTARTED);
         Task task2 = taskService.createTask("Task 2", Status.NOTSTARTED);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
 
@@ -54,7 +54,7 @@ class ProjectTest {
         Task task1 = taskService.createTask("Task 1", Status.DONE);
         Task task2 = taskService.createTask("Task 2", Status.DONE);
         Task task3 = taskService.createTask("Task 3", Status.DONE);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
         projectService.addTaskToProject(projectId, task3);
@@ -72,7 +72,7 @@ class ProjectTest {
         Task task2 = taskService.createTask("Task 2", Status.DONE);
         Task task3 = taskService.createTask("Task 3", Status.NOTSTARTED);
         Task task4 = taskService.createTask("Task 4", Status.INPROGRESS);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
         projectService.addTaskToProject(projectId, task3);
@@ -80,7 +80,7 @@ class ProjectTest {
 
         double completion = projectService.getProjectCompletionPercentage(projectId);
 
-        assertEquals(0.5, completion, 0.001); // 2 out of 4 tasks done = 50%
+        assertEquals(0.5, completion, 0.001);
     }
 
     @Test
@@ -90,14 +90,14 @@ class ProjectTest {
         Task task1 = taskService.createTask("Task 1", Status.DONE);
         Task task2 = taskService.createTask("Task 2", Status.NOTSTARTED);
         Task task3 = taskService.createTask("Task 3", Status.INPROGRESS);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
         projectService.addTaskToProject(projectId, task3);
 
         double completion = projectService.getProjectCompletionPercentage(projectId);
 
-        assertEquals(1.0 / 3.0, completion, 0.01); // Approximately 33.33%
+        assertEquals(1.0 / 3.0, completion, 0.01);
     }
 
     @Test
@@ -122,7 +122,7 @@ class ProjectTest {
         TaskService taskService = new TaskService();
         Task task1 = taskService.createTask("Task 1", Status.NOTSTARTED);
         Task task2 = taskService.createTask("Task 2", Status.NOTSTARTED);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
 
@@ -144,7 +144,7 @@ class ProjectTest {
         Task task3 = taskService.createTask("Task 3", Status.INPROGRESS);
         Task task4 = taskService.createTask("Task 4", Status.INPROGRESS);
         Task task5 = taskService.createTask("Task 5", Status.NOTSTARTED);
-        
+
         projectService.addTaskToProject(projectId, task1);
         projectService.addTaskToProject(projectId, task2);
         projectService.addTaskToProject(projectId, task3);
@@ -156,4 +156,3 @@ class ProjectTest {
         assertEquals(0.4, completion, 0.001);
     }
 }
-

@@ -71,7 +71,7 @@ class TaskTest {
         assertEquals(Status.NOTSTARTED, taskService.mapStatusFromChoice(1));
         assertEquals(Status.INPROGRESS, taskService.mapStatusFromChoice(2));
         assertEquals(Status.DONE, taskService.mapStatusFromChoice(3));
-        assertEquals(Status.NOTSTARTED, taskService.mapStatusFromChoice(999)); // Default case
+        assertEquals(Status.NOTSTARTED, taskService.mapStatusFromChoice(999));
     }
 
     @Test
@@ -123,7 +123,3 @@ class TaskTest {
         assertEquals(Status.NOTSTARTED, task.getStatus());
     }
 }
-
-
-
-

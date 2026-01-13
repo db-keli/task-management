@@ -199,7 +199,7 @@ class ValidationTest {
     void testAddUser_NullEmail() throws Exception {
         User user = userService.createUser("Test User", "valid@example.com", false);
         user.setEmail(null);
-        
+
         InvalidEmailException exception = assertThrows(InvalidEmailException.class, () -> {
             userService.addUser(user);
         });
@@ -239,7 +239,7 @@ class ValidationTest {
     void testAddProject_ZeroBudget() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         project.setBudget(0.0);
-        
+
         InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
             projectService.addProject(project);
         });
@@ -251,7 +251,7 @@ class ValidationTest {
     void testAddProject_NegativeBudget() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         project.setBudget(-100.0);
-        
+
         InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
             projectService.addProject(project);
         });
@@ -263,10 +263,10 @@ class ValidationTest {
     void testAddProject_DuplicateId() throws Exception {
         Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
-        
+
         Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
-        project2.setId(project1.getId()); // Set duplicate ID
-        
+        project2.setId(project1.getId());
+
         InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
             projectService.addProject(project2);
         });
@@ -287,10 +287,10 @@ class ValidationTest {
     void testRemoveTaskFromProject_NonExistentTask() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
-        
+
         Task task = taskService.createTask("Existing Task", Status.NOTSTARTED);
         projectService.addTaskToProject(project.getId(), task);
-        
+
         assertThrows(TaskNotFoundException.class, () -> {
             projectService.removeTaskFromProject(project.getId(), "NONEXISTENT");
         });
@@ -310,7 +310,7 @@ class ValidationTest {
     void testRemoveTaskFromProject_NullTaskId() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
-        
+
         TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () -> {
             projectService.removeTaskFromProject(project.getId(), null);
         });
@@ -322,7 +322,7 @@ class ValidationTest {
     void testRemoveTaskFromProject_ProjectWithNoTasks() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
-        
+
         TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () -> {
             projectService.removeTaskFromProject(project.getId(), "T001");
         });
@@ -335,7 +335,7 @@ class ValidationTest {
     void testGenerateStatusReport_ProjectWithNoTasks() throws Exception {
         Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
-        
+
         EmptyProjectException exception = assertThrows(EmptyProjectException.class, () -> {
             reportService.generateStatusReport();
         });
@@ -348,7 +348,7 @@ class ValidationTest {
     void testGenerateStatusReport_EmptyProjectExceptionMessage() throws Exception {
         Project project = projectService.createProject("Software", "My Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
-        
+
         EmptyProjectException exception = assertThrows(EmptyProjectException.class, () -> {
             reportService.generateStatusReport();
         });
@@ -361,13 +361,13 @@ class ValidationTest {
     void testGenerateStatusReport_MultipleProjectsOneEmpty() throws Exception {
         Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
-        
+
         Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
         projectService.addProject(project2);
-        
+
         Task task = taskService.createTask("Task 1", Status.NOTSTARTED);
         projectService.addTaskToProject(project1.getId(), task);
-        
+
         EmptyProjectException exception = assertThrows(EmptyProjectException.class, () -> {
             reportService.generateStatusReport();
         });
@@ -380,16 +380,16 @@ class ValidationTest {
     void testGenerateStatusReport_AllProjectsHaveTasks() throws Exception {
         Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
-        
+
         Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
         projectService.addProject(project2);
-        
+
         Task task1 = taskService.createTask("Task 1", Status.NOTSTARTED);
         projectService.addTaskToProject(project1.getId(), task1);
-        
+
         Task task2 = taskService.createTask("Task 2", Status.INPROGRESS);
         projectService.addTaskToProject(project2.getId(), task2);
-        
+
         assertDoesNotThrow(() -> {
             reportService.generateStatusReport();
         });
@@ -402,4 +402,3 @@ class ValidationTest {
         assertEquals(0, reportData.length);
     }
 }
-
