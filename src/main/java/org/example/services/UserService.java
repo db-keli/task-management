@@ -67,15 +67,15 @@ public class UserService {
         if (userCount >= users.length) {
             return false;
         }
-        
-        // Validate email
+
+
         validateEmail(user.getEmail());
-        
-        // Check for duplicate email
+
+
         if (getUserByEmail(user.getEmail()) != null) {
             throw new InvalidEmailException("Email already exists: " + user.getEmail());
         }
-        
+
         if (user.getId() == null || user.getId().isEmpty()) {
             user.setId(idManager.getNextId(ModelType.USER));
         }
@@ -95,13 +95,13 @@ public class UserService {
     public boolean deleteUser(String email) {
         if (email == null)
             return false;
-        // Prevent deleting the current user
+
         if (currentUser != null && email.equalsIgnoreCase(currentUser.getEmail())) {
             return false;
         }
         for (int i = 0; i < userCount; i++) {
             if (users[i] != null && email.equalsIgnoreCase(users[i].getEmail())) {
-                // Shift remaining users to fill the gap
+
                 for (int j = i; j < userCount - 1; j++) {
                     users[j] = users[j + 1];
                 }
@@ -124,9 +124,10 @@ public class UserService {
         return null;
     }
 
-    public User createUser(String name, String email, boolean isAdmin) throws InvalidEmailException {
+    public User createUser(String name, String email, boolean isAdmin)
+            throws InvalidEmailException {
         validateEmail(email);
-        
+
         User user = isAdmin ? new AdminUser(name, email) : new RegularUser(name, email);
         user.setId(idManager.getNextId(ModelType.USER));
         return user;
@@ -136,10 +137,11 @@ public class UserService {
         if (email == null || email.trim().isEmpty()) {
             throw new InvalidEmailException("Email cannot be null or empty");
         }
-        
+
         String emailPattern = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
         if (!email.matches(emailPattern)) {
-            throw new InvalidEmailException("Invalid email format. Expected format: user@example.com");
+            throw new InvalidEmailException(
+                    "Invalid email format. Expected format: user@example.com");
         }
     }
 
@@ -147,13 +149,13 @@ public class UserService {
         if (role == null || role.trim().isEmpty()) {
             throw new InvalidRoleException("Role cannot be null or empty");
         }
-        
+
         String normalizedRole = role.trim().toLowerCase();
-        if (!normalizedRole.equals("admin") && !normalizedRole.equals("regular") && 
-            !normalizedRole.equals("adminuser") && !normalizedRole.equals("regularuser")) {
+        if (!normalizedRole.equals("admin") && !normalizedRole.equals("regular")
+                && !normalizedRole.equals("adminuser") && !normalizedRole.equals("regularuser")) {
             throw new InvalidRoleException("Invalid role. Role must be 'admin' or 'regular'");
         }
-        
+
         return normalizedRole.equals("admin") || normalizedRole.equals("adminuser");
     }
 }

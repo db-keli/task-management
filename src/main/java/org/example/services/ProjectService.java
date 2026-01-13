@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 
 import org.example.enums.ModelType;
 import org.example.exceptions.InvalidProjectDataException;
@@ -16,8 +17,7 @@ import org.example.models.Task;
 import org.example.utils.IdCounterManager;
 
 public class ProjectService {
-    private Project[] projects = new Project[100];
-    private int projectCount = 0;
+    private final Map<String, Project> projects = new HashMap<>();
     private final Map<String, List<Task>> projectTasks = new HashMap<>();
     private final Map<String, List<String>> projectAssignedUsers = new HashMap<>();
     private final IdCounterManager idManager;
@@ -39,7 +39,7 @@ public class ProjectService {
         if (budget <= 0) {
             throw new InvalidProjectDataException("Budget must be positive. Provided: " + budget);
         }
-        
+
         Project project;
         if ("Software".equalsIgnoreCase(type)) {
             project = new SoftwareProject(name, description, budget, teamSize);
@@ -54,14 +54,11 @@ public class ProjectService {
         if (project == null) {
             throw new InvalidProjectDataException("Project cannot be null");
         }
-        if (projectCount >= projects.length) {
-            throw new InvalidProjectDataException("Maximum projects limit reached");
-        }
-        
+
         if (project.getBudget() <= 0) {
             throw new InvalidProjectDataException("Budget must be positive. Provided: " + project.getBudget());
         }
-        
+
         if (project.getId() == null || project.getId().isEmpty()) {
             project.setId(getNextProjectId());
         } else {
@@ -69,8 +66,8 @@ public class ProjectService {
                 throw new InvalidProjectDataException("Project ID already exists: " + project.getId());
             }
         }
-        
-        projects[projectCount++] = project;
+
+        projects.put(project.getId(), project);
         return true;
     }
 
@@ -79,94 +76,59 @@ public class ProjectService {
             throw new ProjectNotFoundException("Project ID cannot be null");
         }
 
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && id.equals(projects[i].getId())) {
-                return projects[i];
-            }
+        Project project = projects.get(id);
+        if (project == null) {
+            throw new ProjectNotFoundException("Project ID '" + id + "' does not exist");
         }
-        throw new ProjectNotFoundException("Project ID '" + id + "' does not exist");
+        return project;
     }
 
     private boolean projectExists(String id) {
-        if (id == null) {
-            return false;
-        }
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && id.equals(projects[i].getId())) {
-                return true;
-            }
-        }
-        return false;
+        return id != null && projects.containsKey(id);
     }
 
     public Project[] getAllProjects() {
-        Project[] all = new Project[projectCount];
-        System.arraycopy(projects, 0, all, 0, projectCount);
-        return all;
+        return projects.values().stream()
+                .toArray(Project[]::new);
     }
 
     public Project[] filterByType(String type) {
-        if (type == null)
+        if (type == null) {
             return new Project[0];
-        int count = 0;
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && projects[i].getType().equalsIgnoreCase(type)) {
-                count++;
-            }
         }
-        Project[] filtered = new Project[count];
-        int index = 0;
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && projects[i].getType().equalsIgnoreCase(type)) {
-                filtered[index++] = projects[i];
-            }
-        }
-        return filtered;
+        final String typeFilter = type;
+        return projects.values().stream()
+                .filter(project -> project.getType().equalsIgnoreCase(typeFilter))
+                .toArray(Project[]::new);
     }
 
     public Project[] filterByBudget(double min, double max) {
-        int count = 0;
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && projects[i].getBudget() >= min
-                    && projects[i].getBudget() <= max) {
-                count++;
-            }
-        }
-        Project[] filtered = new Project[count];
-        int index = 0;
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && projects[i].getBudget() >= min
-                    && projects[i].getBudget() <= max) {
-                filtered[index++] = projects[i];
-            }
-        }
-        return filtered;
+        return projects.values().stream()
+                .filter(project -> project.getBudget() >= min && project.getBudget() <= max)
+                .toArray(Project[]::new);
     }
 
     public boolean deleteProject(String id) {
-        if (id == null)
+        if (id == null) {
             return false;
-        for (int i = 0; i < projectCount; i++) {
-            if (projects[i] != null && id.equals(projects[i].getId())) {
-                for (int j = i; j < projectCount - 1; j++) {
-                    projects[j] = projects[j + 1];
-                }
-                projects[projectCount - 1] = null;
-                projectCount--;
-                projectTasks.remove(id);
-                projectAssignedUsers.remove(id);
-                return true;
-            }
+        }
+        Project removed = projects.remove(id);
+        if (removed != null) {
+            projectTasks.remove(id);
+            projectAssignedUsers.remove(id);
+            return true;
         }
         return false;
     }
 
-    public boolean addTaskToProject(String projectId, Task task) throws ProjectNotFoundException {
+
+
+    public synchronized boolean addTaskToProject(String projectId, Task task) throws ProjectNotFoundException {
         if (projectId == null || task == null) {
             return false;
         }
         try {
-            getProjectById(projectId); // Verify project exists
+            getProjectById(projectId);
         } catch (ProjectNotFoundException e) {
             return false;
         }
@@ -174,7 +136,9 @@ public class ProjectService {
         return true;
     }
 
-    public Task[] getTasksForProject(String projectId) {
+
+
+    public synchronized Task[] getTasksForProject(String projectId) {
         if (projectId == null) {
             return new Task[0];
         }
@@ -185,27 +149,29 @@ public class ProjectService {
         return tasks.toArray(new Task[0]);
     }
 
-    public boolean removeTaskFromProject(String projectId, String taskId) throws TaskNotFoundException, ProjectNotFoundException {
+
+
+    public synchronized boolean removeTaskFromProject(String projectId, String taskId) throws TaskNotFoundException, ProjectNotFoundException {
         if (projectId == null || taskId == null) {
             throw new TaskNotFoundException("Project ID and Task ID cannot be null");
         }
-        
+
         try {
-            getProjectById(projectId); // Verify project exists
+            getProjectById(projectId);
         } catch (ProjectNotFoundException e) {
             throw new TaskNotFoundException("Project not found with ID: " + projectId);
         }
-        
+
         List<Task> tasks = projectTasks.get(projectId);
         if (tasks == null) {
             throw new TaskNotFoundException("No tasks found for project: " + projectId);
         }
-        
+
         boolean removed = tasks.removeIf(task -> task != null && taskId.equals(task.getId()));
         if (!removed) {
             throw new TaskNotFoundException("Task not found with ID: " + taskId + " in project: " + projectId);
         }
-        
+
         return true;
     }
 
@@ -214,12 +180,9 @@ public class ProjectService {
         if (tasks.length == 0) {
             return 0.0;
         }
-        int completed = 0;
-        for (Task task : tasks) {
-            if (task != null && task.isCompleted()) {
-                completed++;
-            }
-        }
+        long completed = Arrays.stream(tasks)
+                .filter(task -> task != null && task.isCompleted())
+                .count();
         return completed / (double) tasks.length;
     }
 
@@ -261,5 +224,61 @@ public class ProjectService {
             return new String[0];
         }
         return assignedUsers.toArray(new String[0]);
+    }
+
+
+
+    public Project[] findCompletedProjects() {
+        return projects.values().stream()
+                .filter(project -> {
+                    double completion = getProjectCompletionPercentage(project.getId());
+                    return completion >= 1.0;
+                })
+                .toArray(Project[]::new);
+    }
+
+
+
+    public Project[] getAllProjectsSortedByBudget() {
+        return projects.values().stream()
+                .sorted(java.util.Comparator.comparingDouble(Project::getBudget))
+                .toArray(Project[]::new);
+    }
+
+
+
+    public Project[] getAllProjectsSortedByBudgetDescending() {
+        return projects.values().stream()
+                .sorted(java.util.Comparator.comparingDouble(Project::getBudget).reversed())
+                .toArray(Project[]::new);
+    }
+
+
+
+    public double getTotalBudget() {
+        return projects.values().stream()
+                .mapToDouble(Project::getBudget)
+                .sum();
+    }
+
+
+
+    public double getAverageBudget() {
+        return projects.values().stream()
+                .mapToDouble(Project::getBudget)
+                .average()
+                .orElse(0.0);
+    }
+
+
+
+    public long countProjectsByType(String type) {
+        if (type == null) {
+            return 0;
+        }
+        final String typeFilter = type;
+        return projects.values().stream()
+                .filter(project -> project.getType().equalsIgnoreCase(typeFilter))
+                .count();
     }
 }

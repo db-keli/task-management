@@ -23,7 +23,7 @@ public class ReportService {
         List<StatusReportData> reportData = new ArrayList<>();
         for (Project project : projects) {
             if (project == null) {
-                continue; // Skip null projects
+                continue;
             }
             Task[] tasks = projectService.getTasksForProject(project.getId());
             if (tasks.length == 0) {
