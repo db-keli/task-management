@@ -5,15 +5,19 @@ import org.example.exceptions.EmptyProjectException;
 import org.example.exceptions.InvalidEmailException;
 import org.example.exceptions.InvalidProjectDataException;
 import org.example.exceptions.InvalidRoleException;
+import org.example.exceptions.ProjectNotFoundException;
 import org.example.exceptions.TaskNotFoundException;
 import org.example.models.Project;
 import org.example.models.Task;
 import org.example.models.User;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Input Validation Tests")
 class ValidationTest {
@@ -203,81 +207,93 @@ class ValidationTest {
         InvalidEmailException exception = assertThrows(InvalidEmailException.class, () -> {
             userService.addUser(user);
         });
-        assertTrue(exception.getMessage().contains("null") || exception.getMessage().contains("empty"));
+        assertTrue(exception.getMessage().contains("null")
+                || exception.getMessage().contains("empty"));
     }
 
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when budget is zero")
     void testCreateProject_ZeroBudget() {
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.createProject("Software", "Test Project", "Description", 0.0, 5);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.createProject("Software", "Test Project", "Description", 0.0, 5);
+                });
         assertTrue(exception.getMessage().contains("Budget must be positive"));
     }
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when budget is negative")
     void testCreateProject_NegativeBudget() {
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.createProject("Software", "Test Project", "Description", -100.0, 5);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.createProject("Software", "Test Project", "Description", -100.0,
+                            5);
+                });
         assertTrue(exception.getMessage().contains("Budget must be positive"));
     }
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when adding null project")
     void testAddProject_NullProject() {
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.addProject(null);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.addProject(null);
+                });
         assertTrue(exception.getMessage().contains("cannot be null"));
     }
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when adding project with zero budget")
     void testAddProject_ZeroBudget() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         project.setBudget(0.0);
 
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.addProject(project);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.addProject(project);
+                });
         assertTrue(exception.getMessage().contains("Budget must be positive"));
     }
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when adding project with negative budget")
     void testAddProject_NegativeBudget() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         project.setBudget(-100.0);
 
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.addProject(project);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.addProject(project);
+                });
         assertTrue(exception.getMessage().contains("Budget must be positive"));
     }
 
     @Test
     @DisplayName("Should throw InvalidProjectDataException when adding project with duplicate ID")
     void testAddProject_DuplicateId() throws Exception {
-        Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
+        Project project1 =
+                projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
 
-        Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
+        Project project2 =
+                projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
         project2.setId(project1.getId());
 
-        InvalidProjectDataException exception = assertThrows(InvalidProjectDataException.class, () -> {
-            projectService.addProject(project2);
-        });
+        InvalidProjectDataException exception =
+                assertThrows(InvalidProjectDataException.class, () -> {
+                    projectService.addProject(project2);
+                });
         assertTrue(exception.getMessage().contains("already exists"));
     }
 
 
     @Test
-    @DisplayName("Should throw TaskNotFoundException when removing task from non-existent project")
+    @DisplayName("Should throw ProjectNotFoundException when removing task from non-existent project")
     void testRemoveTaskFromProject_NonExistentProject() {
-        assertThrows(TaskNotFoundException.class, () -> {
+        assertThrows(ProjectNotFoundException.class, () -> {
             projectService.removeTaskFromProject("NONEXISTENT", "T001");
         });
     }
@@ -285,7 +301,8 @@ class ValidationTest {
     @Test
     @DisplayName("Should throw TaskNotFoundException when removing non-existent task")
     void testRemoveTaskFromProject_NonExistentTask() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
 
         Task task = taskService.createTask("Existing Task", Status.NOTSTARTED);
@@ -297,30 +314,32 @@ class ValidationTest {
     }
 
     @Test
-    @DisplayName("Should throw TaskNotFoundException when projectId is null")
+    @DisplayName("Should throw IllegalArgumentException when projectId is null")
     void testRemoveTaskFromProject_NullProjectId() {
-        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () -> {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             projectService.removeTaskFromProject(null, "T001");
         });
-        assertTrue(exception.getMessage().contains("null"));
+        assertTrue(exception.getMessage().contains("cannot be null"));
     }
 
     @Test
-    @DisplayName("Should throw TaskNotFoundException when taskId is null")
+    @DisplayName("Should throw IllegalArgumentException when taskId is null")
     void testRemoveTaskFromProject_NullTaskId() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
 
-        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () -> {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             projectService.removeTaskFromProject(project.getId(), null);
         });
-        assertTrue(exception.getMessage().contains("null"));
+        assertTrue(exception.getMessage().contains("cannot be null"));
     }
 
     @Test
     @DisplayName("Should throw TaskNotFoundException when project has no tasks")
     void testRemoveTaskFromProject_ProjectWithNoTasks() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
 
         TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () -> {
@@ -333,7 +352,8 @@ class ValidationTest {
     @Test
     @DisplayName("Should throw EmptyProjectException when project has no tasks")
     void testGenerateStatusReport_ProjectWithNoTasks() throws Exception {
-        Project project = projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
+        Project project =
+                projectService.createProject("Software", "Test Project", "Description", 1000.0, 5);
         projectService.addProject(project);
 
         EmptyProjectException exception = assertThrows(EmptyProjectException.class, () -> {
@@ -346,7 +366,8 @@ class ValidationTest {
     @Test
     @DisplayName("Should throw EmptyProjectException with correct project name")
     void testGenerateStatusReport_EmptyProjectExceptionMessage() throws Exception {
-        Project project = projectService.createProject("Software", "My Test Project", "Description", 1000.0, 5);
+        Project project = projectService.createProject("Software", "My Test Project", "Description",
+                1000.0, 5);
         projectService.addProject(project);
 
         EmptyProjectException exception = assertThrows(EmptyProjectException.class, () -> {
@@ -359,10 +380,12 @@ class ValidationTest {
     @Test
     @DisplayName("Should throw EmptyProjectException when multiple projects exist but one has no tasks")
     void testGenerateStatusReport_MultipleProjectsOneEmpty() throws Exception {
-        Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
+        Project project1 =
+                projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
 
-        Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
+        Project project2 =
+                projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
         projectService.addProject(project2);
 
         Task task = taskService.createTask("Task 1", Status.NOTSTARTED);
@@ -378,10 +401,12 @@ class ValidationTest {
     @Test
     @DisplayName("Should not throw exception when all projects have tasks")
     void testGenerateStatusReport_AllProjectsHaveTasks() throws Exception {
-        Project project1 = projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
+        Project project1 =
+                projectService.createProject("Software", "Project 1", "Description", 1000.0, 5);
         projectService.addProject(project1);
 
-        Project project2 = projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
+        Project project2 =
+                projectService.createProject("Hardware", "Project 2", "Description", 2000.0, 5);
         projectService.addProject(project2);
 
         Task task1 = taskService.createTask("Task 1", Status.NOTSTARTED);

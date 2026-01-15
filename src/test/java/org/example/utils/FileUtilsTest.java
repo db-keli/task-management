@@ -170,12 +170,10 @@ public class FileUtilsTest {
         FileUtils.deleteDataFile();
         assertFalse(FileUtils.dataFileExists());
 
-        boolean loaded = FileUtils.loadProjects(p -> loadedProjects.add(p),
-                (pid, task) -> loadedTasks.add(task));
-
-        assertFalse(loaded);
-        assertEquals(0, loadedProjects.size());
-        assertEquals(0, loadedTasks.size());
+        assertThrows(FileNotAvailableException.class, () -> {
+            FileUtils.loadProjects(p -> loadedProjects.add(p),
+                    (pid, task) -> loadedTasks.add(task));
+        });
     }
 
     @Test
@@ -326,7 +324,7 @@ public class FileUtilsTest {
 
     @Test
     public void testSaveProjectsNull() {
-        assertThrows(FileNotAvailableException.class,
+        assertThrows(EmptyProjectException.class,
                 () -> FileUtils.saveProjects(null, pid -> new Task[0]));
     }
 
