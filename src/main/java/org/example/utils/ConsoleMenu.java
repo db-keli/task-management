@@ -32,9 +32,11 @@ public class ConsoleMenu {
         this.userService = userService;
         this.projectService = projectService;
         this.taskService = taskService;
-        this.reportService = (reportService != null) ? reportService : new ReportService(this.projectService);
+        this.reportService =
+                (reportService != null) ? reportService : new ReportService(this.projectService);
         this.dataPersistenceService = new DataPersistenceService(this.projectService);
-        this.concurrencyService = new ConcurrencyService(this.projectService, this.taskService, this.userService);
+        this.concurrencyService =
+                new ConcurrencyService(this.projectService, this.taskService, this.userService);
 
         try {
             dataPersistenceService.loadProjectsData();
@@ -294,7 +296,8 @@ public class ConsoleMenu {
 
         String type = (typeChoice == 1) ? "Software" : "Hardware";
         try {
-            Project project = projectService.createProject(type, name, description, budget, teamSize);
+            Project project =
+                    projectService.createProject(type, name, description, budget, teamSize);
             projectService.addProject(project);
             System.out.println("\n✓ Project created successfully! ID: " + project.getId() + "\n");
         } catch (InvalidProjectDataException e) {
@@ -463,11 +466,13 @@ public class ConsoleMenu {
             }
 
             System.out.println("\nConcurrent Update Simulation Settings:");
-            int numThreads = ValidationUtils.readInt("Number of concurrent users (threads): ", 1, 20);
+            int numThreads =
+                    ValidationUtils.readInt("Number of concurrent users (threads): ", 1, 20);
             int updatesPerThread = ValidationUtils.readInt("Number of updates per user: ", 1, 50);
 
             System.out.println("\nStarting concurrent simulation...");
-            concurrencyService.simulateMultiUserTaskUpdates(projectId, numThreads, updatesPerThread);
+            concurrencyService.simulateMultiUserTaskUpdates(projectId, numThreads,
+                    updatesPerThread);
 
         } catch (org.example.exceptions.ProjectNotFoundException e) {
             System.out.println("Error: ProjectNotFoundException - Project ID '" + projectId
@@ -733,7 +738,8 @@ public class ConsoleMenu {
             boolean validEmail = false;
             while (!validEmail) {
                 try {
-                    userEmail = ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userEmail =
+                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
                     userService.validateEmail(userEmail);
                     validEmail = true;
                 } catch (org.example.exceptions.InvalidEmailException e) {
@@ -817,7 +823,8 @@ public class ConsoleMenu {
             boolean validEmail = false;
             while (!validEmail) {
                 try {
-                    userEmail = ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
+                    userEmail =
+                            ValidationUtils.readNonEmptyString("\nEnter user email to assign: ");
                     userService.validateEmail(userEmail);
                     validEmail = true;
                 } catch (org.example.exceptions.InvalidEmailException e) {

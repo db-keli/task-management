@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.example.enums.Status;
+import org.example.exceptions.EmptyProjectException;
 import org.example.exceptions.FileNotAvailableException;
 import org.example.models.HardwareProject;
 import org.example.models.Project;
@@ -29,10 +30,11 @@ public class FileUtils {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
-    public static void saveProjects(Project[] projects, java.util.function.Function<String, Task[]> getTasksFunction)
-            throws FileNotAvailableException {
+    public static void saveProjects(Project[] projects,
+            java.util.function.Function<String, Task[]> getTasksFunction)
+            throws FileNotAvailableException, EmptyProjectException {
         if (projects == null) {
-            throw new FileNotAvailableException("Cannot save null projects array");
+            throw new EmptyProjectException("Cannot save null projects array");
         }
 
         Path filePath = Paths.get(DATA_FILE);
@@ -41,12 +43,10 @@ public class FileUtils {
             List<String> lines = new ArrayList<>();
             lines.add("[");
 
-            List<String> projectJsonLines = Arrays.stream(projects)
-                    .map(project -> {
-                        Task[] tasks = getTasksFunction.apply(project.getId());
-                        return projectWithTasksToJson(project, tasks);
-                    })
-                    .collect(Collectors.toList());
+            List<String> projectJsonLines = Arrays.stream(projects).map(project -> {
+                Task[] tasks = getTasksFunction.apply(project.getId());
+                return projectWithTasksToJson(project, tasks);
+            }).collect(Collectors.toList());
 
             for (int i = 0; i < projectJsonLines.size(); i++) {
                 String projectJson = projectJsonLines.get(i);
@@ -62,17 +62,18 @@ public class FileUtils {
 
             lines.add("]");
 
-            Files.write(filePath, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.WRITE);
+            Files.write(filePath, lines, StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
         } catch (IOException e) {
-            throw new FileNotAvailableException("Failed to save projects to file: " + e.getMessage());
+            throw new FileNotAvailableException(
+                    "Failed to save projects to file: " + e.getMessage());
         } catch (Exception e) {
-            throw new FileNotAvailableException("Unexpected error while saving projects: " + e.getMessage());
+            throw new FileNotAvailableException(
+                    "Unexpected error while saving projects: " + e.getMessage());
         }
     }
 
-    public static boolean loadProjects(
-            java.util.function.Consumer<Project> addProjectFunction,
+    public static boolean loadProjects(java.util.function.Consumer<Project> addProjectFunction,
             java.util.function.BiConsumer<String, Task> addTaskFunction)
             throws FileNotAvailableException {
 
@@ -83,12 +84,12 @@ public class FileUtils {
         Path filePath = Paths.get(DATA_FILE);
 
         if (!Files.exists(filePath)) {
-            System.out.println("No data file found. Starting with empty data.");
-            return false;
+            throw new FileNotAvailableException("Data file does not exist: " + DATA_FILE);
         }
 
         if (!Files.isReadable(filePath)) {
-            throw new FileNotAvailableException("Data file exists but is not readable: " + DATA_FILE);
+            throw new FileNotAvailableException(
+                    "Data file is not readable (check permissions): " + DATA_FILE);
         }
 
         try {
@@ -119,15 +120,15 @@ public class FileUtils {
         json.append("{\n");
         json.append("    \"projectId\": \"").append(escapeJson(project.getId())).append("\",\n");
         json.append("    \"name\": \"").append(escapeJson(project.getName())).append("\",\n");
-        json.append("    \"description\": \"").append(escapeJson(project.getDescription())).append("\",\n");
+        json.append("    \"description\": \"").append(escapeJson(project.getDescription()))
+                .append("\",\n");
         json.append("    \"type\": \"").append(project.getType()).append("\",\n");
         json.append("    \"budget\": ").append(project.getBudget()).append(",\n");
         json.append("    \"teamSize\": ").append(project.getTeamSize()).append(",\n");
         json.append("    \"tasks\": [\n");
 
-        List<String> taskJsonLines = Arrays.stream(tasks)
-                .map(FileUtils::taskToJson)
-                .collect(Collectors.toList());
+        List<String> taskJsonLines =
+                Arrays.stream(tasks).map(FileUtils::taskToJson).collect(Collectors.toList());
 
         for (int i = 0; i < taskJsonLines.size(); i++) {
             String taskLine = "      " + taskJsonLines.get(i);
@@ -147,9 +148,7 @@ public class FileUtils {
         String assignedUserId = task.getAssignedUserId() != null ? task.getAssignedUserId() : "";
         return String.format(
                 "{\"id\":\"%s\",\"name\":\"%s\",\"status\":\"%s\",\"assignedUserId\":\"%s\"}",
-                escapeJson(task.getId()),
-                escapeJson(task.getName()),
-                task.getStatus().name(),
+                escapeJson(task.getId()), escapeJson(task.getName()), task.getStatus().name(),
                 escapeJson(assignedUserId));
     }
 
@@ -157,21 +156,16 @@ public class FileUtils {
         if (str == null) {
             return "";
         }
-        return str.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        return str.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+                .replace("\r", "\\r").replace("\t", "\\t");
     }
 
-    private static void loadDataFromLines(
-            List<String> lines,
+    private static void loadDataFromLines(List<String> lines,
             java.util.function.Consumer<Project> addProjectFunction,
             java.util.function.BiConsumer<String, Task> addTaskFunction) {
 
         try {
-            String jsonContent = lines.stream()
-                    .collect(Collectors.joining("\n"));
+            String jsonContent = lines.stream().collect(Collectors.joining("\n"));
 
             Pattern arrayPattern = Pattern.compile("^\\s*\\[(.*?)\\]\\s*$", Pattern.DOTALL);
             Matcher arrayMatcher = arrayPattern.matcher(jsonContent);
@@ -183,7 +177,8 @@ public class FileUtils {
                 Pattern contentPattern = Pattern.compile("\\[(.*)\\]", Pattern.DOTALL);
                 Matcher contentMatcher = contentPattern.matcher(jsonContent);
                 if (contentMatcher.find()) {
-                    parseProjectsWithTasks(contentMatcher.group(1), addProjectFunction, addTaskFunction);
+                    parseProjectsWithTasks(contentMatcher.group(1), addProjectFunction,
+                            addTaskFunction);
                 }
             }
         } catch (Exception e) {
@@ -191,15 +186,15 @@ public class FileUtils {
         }
     }
 
-    private static void parseProjectsWithTasks(
-            String arrayContent,
+    private static void parseProjectsWithTasks(String arrayContent,
             java.util.function.Consumer<Project> addProjectFunction,
             java.util.function.BiConsumer<String, Task> addTaskFunction) {
 
         int start = 0;
         while (start < arrayContent.length()) {
             while (start < arrayContent.length()
-                    && (Character.isWhitespace(arrayContent.charAt(start)) || arrayContent.charAt(start) == ',')) {
+                    && (Character.isWhitespace(arrayContent.charAt(start))
+                            || arrayContent.charAt(start) == ',')) {
                 start++;
             }
 
@@ -228,26 +223,30 @@ public class FileUtils {
                 if (projectEnd > projectStart) {
                     String fullProjectJson = arrayContent.substring(projectStart, projectEnd);
                     try {
-                        Pattern projectIdPattern = Pattern.compile("\"projectId\"\\s*:\\s*\"([^\"]+)\"");
+                        Pattern projectIdPattern =
+                                Pattern.compile("\"projectId\"\\s*:\\s*\"([^\"]+)\"");
                         Matcher projectIdMatcher = projectIdPattern.matcher(fullProjectJson);
                         if (!projectIdMatcher.find()) {
                             start = projectEnd;
                             continue;
                         }
 
-                        Pattern tasksPattern = Pattern.compile("\"tasks\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
+                        Pattern tasksPattern =
+                                Pattern.compile("\"tasks\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
                         Matcher tasksMatcher = tasksPattern.matcher(fullProjectJson);
                         String tasksJson = "";
                         String projectJsonWithoutTasks = fullProjectJson;
                         if (tasksMatcher.find()) {
                             tasksJson = tasksMatcher.group(1);
-                            projectJsonWithoutTasks = fullProjectJson.substring(0, tasksMatcher.start()) + 
-                                                     fullProjectJson.substring(tasksMatcher.end());
+                            projectJsonWithoutTasks =
+                                    fullProjectJson.substring(0, tasksMatcher.start())
+                                            + fullProjectJson.substring(tasksMatcher.end());
                         }
 
                         Map<String, String> projectData = parseProjectJson(projectJsonWithoutTasks);
                         if (projectData.containsKey("projectId") || projectData.containsKey("id")) {
-                            String actualProjectId = projectData.containsKey("projectId") ? projectData.get("projectId")
+                            String actualProjectId = projectData.containsKey("projectId")
+                                    ? projectData.get("projectId")
                                     : projectData.get("id");
 
                             Project project = createProject(projectData);
@@ -273,9 +272,7 @@ public class FileUtils {
         }
     }
 
-    private static void parseAndLoadTasks(
-            String projectId,
-            String tasksJson,
+    private static void parseAndLoadTasks(String projectId, String tasksJson,
             java.util.function.BiConsumer<String, Task> addTaskFunction) {
 
         if (tasksJson == null || tasksJson.trim().isEmpty()) {
@@ -284,8 +281,8 @@ public class FileUtils {
 
         int start = 0;
         while (start < tasksJson.length()) {
-            while (start < tasksJson.length()
-                    && (Character.isWhitespace(tasksJson.charAt(start)) || tasksJson.charAt(start) == ',')) {
+            while (start < tasksJson.length() && (Character.isWhitespace(tasksJson.charAt(start))
+                    || tasksJson.charAt(start) == ',')) {
                 start++;
             }
 
@@ -322,7 +319,8 @@ public class FileUtils {
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Error parsing task for project " + projectId + ": " + e.getMessage());
+                        System.err.println("Error parsing task for project " + projectId + ": "
+                                + e.getMessage());
                     }
 
                     start = taskEnd;
@@ -426,11 +424,8 @@ public class FileUtils {
         if (str == null) {
             return "";
         }
-        return str.replace("\\\"", "\"")
-                .replace("\\\\", "\\")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-                .replace("\\t", "\t");
+        return str.replace("\\\"", "\"").replace("\\\\", "\\").replace("\\n", "\n")
+                .replace("\\r", "\r").replace("\\t", "\t");
     }
 
     public static boolean dataFileExists() {
@@ -444,7 +439,8 @@ public class FileUtils {
             if (Files.exists(filePath)) {
                 Path parent = filePath.getParent();
                 if (parent != null && !Files.isWritable(parent)) {
-                    throw new FileNotAvailableException("Cannot delete file: no write permission in directory");
+                    throw new FileNotAvailableException(
+                            "Cannot delete file: no write permission in directory");
                 }
             }
 

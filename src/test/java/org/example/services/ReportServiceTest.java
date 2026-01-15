@@ -227,6 +227,8 @@ public class ReportServiceTest {
         
         assertEquals(5, report.length);
         
+        java.util.Arrays.sort(report, java.util.Comparator.comparingInt(StatusReportData::totalTasks));
+        
         for (int i = 0; i < 5; i++) {
             assertEquals((i + 1) * 2, report[i].totalTasks());
             assertEquals((i + 1), report[i].completedTasks());

@@ -1,5 +1,6 @@
 package org.example.services;
 
+import org.example.exceptions.EmptyProjectException;
 import org.example.exceptions.FileNotAvailableException;
 import org.example.models.Project;
 import org.example.utils.FileUtils;
@@ -11,7 +12,7 @@ public class DataPersistenceService {
         this.projectService = projectService;
     }
 
-    public void saveProjectsData() throws FileNotAvailableException {
+    public void saveProjectsData() throws FileNotAvailableException, EmptyProjectException {
         try {
             Project[] projects = projectService.getAllProjects();
 
@@ -22,7 +23,7 @@ public class DataPersistenceService {
 
             FileUtils.saveProjects(projects, projectService::getTasksForProject);
             System.out.println("Successfully saved " + projects.length + " project(s).");
-        } catch (FileNotAvailableException e) {
+        } catch (FileNotAvailableException | EmptyProjectException e) {
             System.err.println("Failed to save projects: " + e.getMessage());
             throw e;
         } catch (RuntimeException e) {
@@ -32,24 +33,25 @@ public class DataPersistenceService {
 
     public void loadProjectsData() throws FileNotAvailableException {
         try {
-            boolean loaded = FileUtils.loadProjects(
-                    project -> {
-                        try {
-                            projectService.addProject(project);
-                        } catch (Exception e) {
-                            System.err.println("Error adding project " + project.getId() + ": " + e.getMessage());
-                        }
-                    },
-                    (projectId, task) -> {
-                        try {
-                            boolean added = projectService.addTaskToProject(projectId, task);
-                            if (!added) {
-                                System.err.println("Failed to add task " + task.getId() + " to project " + projectId);
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Error adding task to project " + projectId + ": " + e.getMessage());
-                        }
-                    });
+            boolean loaded = FileUtils.loadProjects(project -> {
+                try {
+                    projectService.addProject(project);
+                } catch (Exception e) {
+                    System.err.println(
+                            "Error adding project " + project.getId() + ": " + e.getMessage());
+                }
+            }, (projectId, task) -> {
+                try {
+                    boolean added = projectService.addTaskToProject(projectId, task);
+                    if (!added) {
+                        System.err.println(
+                                "Failed to add task " + task.getId() + " to project " + projectId);
+                    }
+                } catch (Exception e) {
+                    System.err.println(
+                            "Error adding task to project " + projectId + ": " + e.getMessage());
+                }
+            });
 
             if (loaded) {
                 Project[] projects = projectService.getAllProjects();
